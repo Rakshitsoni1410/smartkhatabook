@@ -18,7 +18,7 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Sign Up')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
@@ -26,26 +26,48 @@ class _SignupScreenState extends State<SignupScreen> {
             children: [
               // Name
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Full Name'),
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  prefixIcon: Icon(Icons.person),
+                ),
                 validator: (v) => v!.isEmpty ? 'Enter name' : null,
               ),
 
-              // Mobile
+              const SizedBox(height: 16),
+
+              // Mobile (10-digit validation)
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Mobile Number'),
-                validator: (v) => v!.isEmpty ? 'Enter mobile number' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Mobile Number',
+                  prefixIcon: Icon(Icons.phone),
+                ),
+                keyboardType: TextInputType.phone,
+                maxLength: 10,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Enter mobile number';
+                  }
+                  if (!RegExp(r'^[0-9]{10}$').hasMatch(value)) {
+                    return 'Enter valid 10-digit mobile number';
+                  }
+                  return null;
+                },
               ),
+
+              const SizedBox(height: 16),
 
               // Password
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Password'),
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  prefixIcon: Icon(Icons.lock),
+                ),
                 obscureText: true,
                 validator: (v) => v!.isEmpty ? 'Enter password' : null,
               ),
 
               const SizedBox(height: 20),
 
-              // ROLE SELECTION
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -81,7 +103,6 @@ class _SignupScreenState extends State<SignupScreen> {
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    // For now, just go to login
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
@@ -99,3 +120,4 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 }
+

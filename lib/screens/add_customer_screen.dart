@@ -16,15 +16,36 @@ class AddCustomerScreen extends StatelessWidget {
           child: Column(
             children: [
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Customer Name'),
+                decoration: const InputDecoration(
+                  labelText: 'Customer Name',
+                  prefixIcon: Icon(Icons.person),
+                ),
                 validator: (v) => v!.isEmpty ? 'Enter name' : null,
               ),
+
+              const SizedBox(height: 16),
+
+              // Mobile (10-digit validation)
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Mobile Number'),
+                decoration: const InputDecoration(
+                  labelText: 'Mobile Number',
+                  prefixIcon: Icon(Icons.phone),
+                ),
                 keyboardType: TextInputType.phone,
-                validator: (v) => v!.isEmpty ? 'Enter mobile number' : null,
+                maxLength: 10,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Enter mobile number';
+                  }
+                  if (!RegExp(r'^[0-9]{10}$').hasMatch(value)) {
+                    return 'Enter valid 10-digit mobile number';
+                  }
+                  return null;
+                },
               ),
+
               const SizedBox(height: 30),
+
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
