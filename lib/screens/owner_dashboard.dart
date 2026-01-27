@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'add_customer_screen.dart';
 import 'customer_list_screen.dart';
+import 'ledger_summary_screen.dart';
 
 class OwnerDashboard extends StatefulWidget {
   const OwnerDashboard({super.key});
@@ -14,7 +15,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
   final pages = [
     const CustomerListScreen(),
-    const Center(child: Text('Ledger Summary')),
+    const LedgerSummaryScreen(),
     const Center(child: Text('Profile')),
   ];
 

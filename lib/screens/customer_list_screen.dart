@@ -1,37 +1,67 @@
 import 'package:flutter/material.dart';
-import 'add_transaction_screen.dart';
+import 'create_bill_screen.dart';
 
 class CustomerListScreen extends StatelessWidget {
   const CustomerListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final List<Map<String, dynamic>> customers = [
+      {
+        'name': 'Rahul Patel',
+        'totalBilled': 2300.0,
+        'totalPaid': 1800.0,
+      },
+      {
+        'name': 'Amit Shah',
+        'totalBilled': 1200.0,
+        'totalPaid': 1200.0,
+      },
+      {
+        'name': 'Neha Mehta',
+        'totalBilled': 900.0,
+        'totalPaid': 400.0,
+      },
+    ];
+
     return Scaffold(
       appBar: AppBar(title: const Text('Customers')),
-      body: ListView(
-        children: [
-          _customerTile(context, 'Rahul Patel'),
-          _customerTile(context, 'Amit Shah'),
-          _customerTile(context, 'Neha Mehta'),
-        ],
-      ),
-    );
-  }
+      body: ListView.builder(
+        itemCount: customers.length,
+        itemBuilder: (context, index) {
+          final customer = customers[index];
 
-  Widget _customerTile(BuildContext context, String name) {
-    return ListTile(
-      leading: const CircleAvatar(child: Icon(Icons.person)),
-      title: Text(name),
-      subtitle: const Text('Balance: ₹0'),
-      trailing: const Icon(Icons.arrow_forward),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AddTransactionScreen(customerName: name),
-          ),
-        );
-      },
+          final totalBilled = customer['totalBilled'] as double;
+          final totalPaid = customer['totalPaid'] as double;
+          final outstanding = totalBilled - totalPaid;
+
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.person)),
+              title: Text(customer['name'] as String),
+              subtitle: Text(
+                outstanding > 0
+                    ? 'Outstanding: ₹${outstanding.toStringAsFixed(2)}'
+                    : 'No Dues',
+                style: TextStyle(
+                  color: outstanding > 0 ? Colors.red : Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              trailing: const Icon(Icons.receipt_long),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CreateBillScreen(),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 }

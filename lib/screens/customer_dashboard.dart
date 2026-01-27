@@ -1,190 +1,98 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 
 class CustomerDashboard extends StatelessWidget {
   const CustomerDashboard({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Dummy data (later from backend)
+    final List<Map<String, dynamic>> shops = [
+      {
+        'shop': 'Ramesh Kirana',
+        'total': 2300.0,
+        'bills': [
+          {'date': '10 Aug', 'amount': 1200.0},
+          {'date': '18 Aug', 'amount': 1100.0},
+        ],
+      },
+      {
+        'shop': 'Medical Store',
+        'total': 850.0,
+        'bills': [
+          {'date': '15 Aug', 'amount': 850.0},
+        ],
+      },
+    ];
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Customer Dashboard')),
-      body: SingleChildScrollView(
+      appBar: AppBar(title: const Text('My Spending')),
+      body: ListView.builder(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _summaryCards(),
-            const SizedBox(height: 24),
-            _pieChartCard(),
-            const SizedBox(height: 24),
-            _barChartCard(),
-          ],
-        ),
-      ),
-    );
-  }
+        itemCount: shops.length,
+        itemBuilder: (context, index) {
+          final shop = shops[index];
+          final bills =
+          shop['bills'] as List<Map<String, dynamic>>; // ✅ FIX
 
-  // ===== Summary =====
-  Widget _summaryCards() {
-    return Row(
-      children: const [
-        Expanded(
-          child: _SummaryCard(
-            title: 'Total Credit',
-            amount: '₹8,000',
-            color: Colors.green,
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: _SummaryCard(
-            title: 'Total Debit',
-            amount: '₹5,500',
-            color: Colors.red,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ===== Pie Chart =====
-  Widget _pieChartCard() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const Text(
-              'Spending Distribution',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          return Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: PieChart(
-                PieChartData(
-                  sections: [
-                    PieChartSectionData(
-                      value: 40,
-                      title: 'Groceries',
-                      color: Colors.blue,
-                      radius: 60,
-                    ),
-                    PieChartSectionData(
-                      value: 35,
-                      title: 'Stationery',
-                      color: Colors.orange,
-                      radius: 60,
-                    ),
-                    PieChartSectionData(
-                      value: 25,
-                      title: 'Others',
-                      color: Colors.purple,
-                      radius: 60,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ===== Bar Chart =====
-  Widget _barChartCard() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const Text(
-              'Monthly Spending',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 220,
-              child: BarChart(
-                BarChartData(
-                  barGroups: [
-                    _bar(0, 2.5),
-                    _bar(1, 3.2),
-                    _bar(2, 1.8),
-                    _bar(3, 4.0),
-                  ],
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: true),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          const months = ['Jan', 'Feb', 'Mar', 'Apr'];
-                          return Text(months[value.toInt()]);
-                        },
-                      ),
+            margin: const EdgeInsets.only(bottom: 16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // SHOP NAME
+                  Text(
+                    shop['shop'] as String,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
+
+                  const SizedBox(height: 6),
+
+                  Text(
+                    'Total Spent: ₹${shop['total']}',
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const Divider(height: 24),
+
+                  const Text(
+                    'Bills',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: bills.length,
+                    itemBuilder: (context, i) {
+                      final bill = bills[i];
+
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.receipt_long),
+                        title: Text('₹${bill['amount']}'),
+                        subtitle: Text('Date: ${bill['date']}'),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  BarChartGroupData _bar(int x, double y) {
-    return BarChartGroupData(
-      x: x,
-      barRods: [
-        BarChartRodData(
-          toY: y,
-          color: Colors.blue,
-          width: 18,
-          borderRadius: BorderRadius.circular(6),
-        ),
-      ],
-    );
-  }
-}
-
-// ===== Summary Card Widget =====
-class _SummaryCard extends StatelessWidget {
-  final String title;
-  final String amount;
-  final Color color;
-
-  const _SummaryCard({
-    required this.title,
-    required this.amount,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Text(title, style: const TextStyle(color: Colors.grey)),
-            const SizedBox(height: 8),
-            Text(
-              amount,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
