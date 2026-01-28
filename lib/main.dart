@@ -2,34 +2,75 @@ import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const SmartKhataApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SmartKhataApp extends StatelessWidget {
+  const SmartKhataApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+
       theme: ThemeData(
-        primaryColor: Colors.blue,
-        scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
+        useMaterial3: true,
+        brightness: Brightness.light,
+
+        primaryColor: const Color(0xFF2563EB),
+
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF2563EB),
+          secondary: Color(0xFF1D4ED8),
+          background: Color(0xFFF3F4F6),
         ),
+
+        scaffoldBackgroundColor: const Color(0xFFF3F4F6),
+
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF2563EB),
+          foregroundColor: Colors.white,
+          elevation: 2,
+          centerTitle: true,
+        ),
+
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 5,
+          shadowColor: Colors.black26,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
-            minimumSize: const Size(double.infinity, 50),
+            backgroundColor: Color(0xFF2563EB),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
             ),
           ),
         ),
+
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Color(0xFF2563EB),
+          foregroundColor: Colors.white,
+        ),
+
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Colors.white,
+          selectedItemColor: Color(0xFF2563EB),
+          unselectedItemColor: Colors.grey,
+          selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600),
+          type: BottomNavigationBarType.fixed,
+          elevation: 12,
+        ),
       ),
-      home: const SplashScreen(),
+
+      home: SplashScreen(),
     );
   }
 }

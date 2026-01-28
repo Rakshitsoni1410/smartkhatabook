@@ -1,71 +1,74 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
-import 'home_screen.dart';
+import 'package:flutter/material.dart';
+import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(seconds: 2), () {
+
+    // Animation for fade effect
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    // Navigate after 3 seconds
+    Timer(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
     });
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue,
+      backgroundColor: const Color(0xFF2563EB),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 110,
-              height: 110,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Colors.white, Colors.blue.shade100],
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 10,
-                    offset: Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: const Icon(
+        child: FadeTransition(
+          opacity: _controller,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(
                 Icons.account_balance_wallet_rounded,
-                size: 60,
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Smart Khata',
-              style: TextStyle(
+                size: 90,
                 color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
               ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Digital Ledger App',
-              style: TextStyle(color: Colors.white70),
-            ),
-          ],
+              SizedBox(height: 20),
+              Text(
+                "Smart Khata",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                "Business Ledger & Billing System",
+                style: TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
         ),
       ),
     );
