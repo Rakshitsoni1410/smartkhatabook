@@ -10,12 +10,14 @@ class EmployeeScreen extends StatefulWidget {
 class _EmployeeScreenState extends State<EmployeeScreen> {
   final List<Map<String, String>> _employees = [];
 
+  final _formKey = GlobalKey<FormState>();
+
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   String _role = "Cashier";
 
   void _addEmployee() {
-    if (_nameController.text.isEmpty || _phoneController.text.isEmpty) return;
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _employees.add({
@@ -33,62 +35,95 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
   void _showAddDialog() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       builder: (_) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("Add Employee",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-
-            const SizedBox(height: 16),
-
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: "Employee Name",
-                prefixIcon: Icon(Icons.person),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Add Employee",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-            ),
-            const SizedBox(height: 10),
 
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: "Mobile Number",
-                prefixIcon: Icon(Icons.phone),
+              const SizedBox(height: 16),
+
+              // 🔹 NAME
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: "Employee Name",
+                  prefixIcon: Icon(Icons.person),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return "Enter employee name";
+                  }
+                  return null;
+                },
               ),
-            ),
-            const SizedBox(height: 10),
 
-            DropdownButtonFormField(
-              value: _role,
-              items: const [
-                DropdownMenuItem(value: "Cashier", child: Text("Cashier")),
-                DropdownMenuItem(value: "Salesman", child: Text("Salesman")),
-                DropdownMenuItem(value: "Delivery", child: Text("Delivery Boy")),
-                DropdownMenuItem(value: "Manager", child: Text("Manager")),
-              ],
-              onChanged: (v) => setState(() => _role = v!),
-              decoration: const InputDecoration(
-                labelText: "Employee Role",
-                prefixIcon: Icon(Icons.badge),
+              const SizedBox(height: 10),
+
+              // 🔹 MOBILE NUMBER (10 DIGIT VALIDATION)
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                maxLength: 10,
+                decoration: const InputDecoration(
+                  labelText: "Mobile Number",
+                  prefixIcon: Icon(Icons.phone),
+                  counterText: "",
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return "Enter mobile number";
+                  }
+                  if (!RegExp(r'^[0-9]{10}$').hasMatch(value)) {
+                    return "Enter valid 10-digit mobile number";
+                  }
+                  return null;
+                },
               ),
-            ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 10),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _addEmployee,
-                icon: const Icon(Icons.save),
-                label: const Text("Save Employee"),
+              // 🔹 ROLE
+              DropdownButtonFormField(
+                value: _role,
+                items: const [
+                  DropdownMenuItem(value: "Cashier", child: Text("Cashier")),
+                  DropdownMenuItem(value: "Salesman", child: Text("Salesman")),
+                  DropdownMenuItem(value: "Delivery", child: Text("Delivery Boy")),
+                  DropdownMenuItem(value: "Manager", child: Text("Manager")),
+                ],
+                onChanged: (v) => setState(() => _role = v!),
+                decoration: const InputDecoration(
+                  labelText: "Employee Role",
+                  prefixIcon: Icon(Icons.badge),
+                ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 20),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _addEmployee,
+                  icon: const Icon(Icons.save),
+                  label: const Text("Save Employee"),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -119,7 +154,8 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
             Icon(
               Icons.group_off,
               size: 70,
-              color: Theme.of(context).primaryColor.withOpacity(0.6),
+              color:
+              Theme.of(context).primaryColor.withOpacity(0.6),
             ),
             const SizedBox(height: 16),
             Text(
@@ -149,7 +185,8 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
             child: ListTile(
               leading: CircleAvatar(
                 backgroundColor: Theme.of(context).primaryColor,
-                child: const Icon(Icons.person, color: Colors.white),
+                child:
+                const Icon(Icons.person, color: Colors.white),
               ),
               title: Text(
                 emp["name"]!,
@@ -161,11 +198,15 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
               subtitle: Text(
                 "${emp["role"]} • ${emp["phone"]}",
                 style: TextStyle(
-                  color: Theme.of(context).textTheme.bodySmall?.color,
+                  color: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.color,
                 ),
               ),
               trailing: IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
+                icon:
+                const Icon(Icons.delete, color: Colors.red),
                 onPressed: () => _removeEmployee(index),
               ),
             ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'stock_action_screen.dart';
+import 'wholesaler_list_screen.dart';
 
 class ProductScreen extends StatefulWidget {
   const ProductScreen({super.key});
@@ -14,77 +16,57 @@ class _ProductScreenState extends State<ProductScreen> {
   final _priceController = TextEditingController();
   final _stockController = TextEditingController();
 
-  void _addProduct() {
-    if (_nameController.text.isEmpty ||
-        _priceController.text.isEmpty ||
-        _stockController.text.isEmpty) return;
-
-    setState(() {
-      _products.add({
-        'name': _nameController.text,
-        'price': _priceController.text,
-        'stock': _stockController.text,
-      });
-    });
-
-    _nameController.clear();
-    _priceController.clear();
-    _stockController.clear();
-    Navigator.pop(context);
-  }
-
-  void _showAddDialog() {
-    showModalBottomSheet(
+  void _showAddProductDialog() {
+    showDialog(
       context: context,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+      builder: (_) => AlertDialog(
+        title: const Text("Add Product"),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Add Product",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-
-            const SizedBox(height: 16),
-
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: "Product Name",
-                prefixIcon: Icon(Icons.inventory),
-              ),
+              decoration: const InputDecoration(labelText: "Product Name"),
             ),
-            const SizedBox(height: 10),
-
             TextField(
               controller: _priceController,
-              decoration: const InputDecoration(
-                labelText: "Price",
-                prefixIcon: Icon(Icons.currency_rupee),
-              ),
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: "Price"),
             ),
-            const SizedBox(height: 10),
-
             TextField(
               controller: _stockController,
-              decoration: const InputDecoration(
-                labelText: "Stock Quantity",
-                prefixIcon: Icon(Icons.storage),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _addProduct,
-                icon: const Icon(Icons.save),
-                label: const Text("Save Product"),
-              ),
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: "Opening Stock"),
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (_nameController.text.isEmpty ||
+                  _priceController.text.isEmpty ||
+                  _stockController.text.isEmpty) return;
+
+              setState(() {
+                _products.add({
+                  "name": _nameController.text,
+                  "price": int.parse(_priceController.text),
+                  "stock": int.parse(_stockController.text),
+                });
+              });
+
+              _nameController.clear();
+              _priceController.clear();
+              _stockController.clear();
+              Navigator.pop(context);
+            },
+            child: const Text("Save"),
+          ),
+        ],
       ),
     );
   }
@@ -92,34 +74,35 @@ class _ProductScreenState extends State<ProductScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text("Products & Stock"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.store_mall_directory),
+            tooltip: "Order from Wholesaler",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const WholesalerListScreen(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddDialog,
+        onPressed: _showAddProductDialog,
         icon: const Icon(Icons.add),
         label: const Text("Add Product"),
       ),
+
       body: _products.isEmpty
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inventory_2_outlined,
-              size: 80,
-              color: Theme.of(context).primaryColor.withOpacity(0.6),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              "No Products Added",
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Tap the button below to add stock",
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ],
+          ? const Center(
+        child: Text(
+          "No products added",
+          style: TextStyle(color: Colors.grey),
         ),
       )
           : ListView.builder(
@@ -130,13 +113,87 @@ class _ProductScreenState extends State<ProductScreen> {
 
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Theme.of(context).primaryColor,
-                child: const Icon(Icons.inventory, color: Colors.white),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 🔹 PRODUCT INFO
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor:
+                        Theme.of(context).primaryColor,
+                        child: const Icon(Icons.inventory,
+                            color: Colors.white),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              product["name"],
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16),
+                            ),
+                            Text(
+                              "₹${product["price"]}  •  Stock: ${product["stock"]}",
+                              style:
+                              const TextStyle(color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // 🔹 ADD / MINUS BUTTONS (THIS WAS MISSING)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.add, color: Colors.green),
+                          label: const Text("Add"),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StockActionScreen(
+                                  productName: product["name"],
+                                  currentStock: product["stock"],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon:
+                          const Icon(Icons.remove, color: Colors.red),
+                          label: const Text("Reduce"),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StockActionScreen(
+                                  productName: product["name"],
+                                  currentStock: product["stock"],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              title: Text(product['name']),
-              subtitle: Text("₹${product['price']} • Stock: ${product['stock']}"),
             ),
           );
         },
