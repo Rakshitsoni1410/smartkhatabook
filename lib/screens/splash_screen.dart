@@ -55,7 +55,7 @@ class _SplashScreenState extends State<SplashScreen>
               ),
               SizedBox(height: 20),
               Text(
-                "Smart Khata",
+                "Smart Khatabook",
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
