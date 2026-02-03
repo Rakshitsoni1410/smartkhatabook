@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -10,140 +8,162 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  String _role = "Retailer";
-  String _category = "Grocery";
-  File? _logo;
+  final _formKey = GlobalKey<FormState>();
 
-  Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      setState(() {
-        _logo = File(picked.path);
-      });
-    }
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _shopController = TextEditingController();
+  final _addressController = TextEditingController();
+
+  String _role = "Retailer";
+
+  void _register() {
+    if (!_formKey.currentState!.validate()) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Registration successful")),
+    );
+
+    Navigator.pop(context); // back to login
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FB),
-      appBar: AppBar(title: const Text('Business Registration')),
+      appBar: AppBar(title: const Text("Sign Up")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          elevation: 6,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-
-                /// 🔹 LOGO UPLOAD
-                GestureDetector(
-                  onTap: _pickImage,
-                  child: CircleAvatar(
-                    radius: 40,
-                    backgroundColor: const Color(0xFF2563EB),
-                    backgroundImage: _logo != null ? FileImage(_logo!) : null,
-                    child: _logo == null
-                        ? const Icon(Icons.camera_alt, color: Colors.white)
-                        : null,
-                  ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              // NAME
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: "Full Name",
+                  prefixIcon: Icon(Icons.person),
                 ),
-                const SizedBox(height: 8),
-                const Text("Upload Shop Logo (Optional)",
-                    style: TextStyle(color: Colors.grey)),
+                validator: (v) =>
+                v == null || v.isEmpty ? "Enter name" : null,
+              ),
 
-                const SizedBox(height: 20),
+              const SizedBox(height: 10),
 
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Owner Name',
-                    prefixIcon: Icon(Icons.person),
-                  ),
+              // MOBILE
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                maxLength: 10,
+                decoration: const InputDecoration(
+                  labelText: "Mobile Number",
+                  prefixIcon: Icon(Icons.phone),
+                  counterText: "",
                 ),
-                const SizedBox(height: 16),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return "Enter mobile number";
+                  if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) {
+                    return "Enter valid 10-digit number";
+                  }
+                  return null;
+                },
+              ),
 
+              const SizedBox(height: 10),
+
+              // ROLE
+              DropdownButtonFormField(
+                value: _role,
+                decoration: const InputDecoration(
+                  labelText: "User Role",
+                  prefixIcon: Icon(Icons.business),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                      value: "Wholesaler", child: Text("Wholesaler")),
+                  DropdownMenuItem(
+                      value: "Retailer", child: Text("Retailer")),
+                  DropdownMenuItem(
+                      value: "Customer", child: Text("Customer")),
+                ],
+                onChanged: (v) => setState(() => _role = v!),
+              ),
+
+              const SizedBox(height: 10),
+
+              // SHOP NAME (not for customer)
+              if (_role != "Customer")
                 TextFormField(
+                  controller: _shopController,
                   decoration: const InputDecoration(
-                    labelText: 'Shop Name',
+                    labelText: "Shop / Business Name",
                     prefixIcon: Icon(Icons.store),
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Mobile Number',
-                    prefixIcon: Icon(Icons.phone),
-                  ),
-                  keyboardType: TextInputType.phone,
-                  maxLength: 10,
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: Icon(Icons.lock),
-                  ),
-                  obscureText: true,
-                ),
-                const SizedBox(height: 16),
-
-                DropdownButtonFormField(
-                  value: _role,
-                  items: const [
-                    DropdownMenuItem(value: "Wholesaler", child: Text("Wholesaler")),
-                    DropdownMenuItem(value: "Retailer", child: Text("Retailer")),
-                    DropdownMenuItem(value: "Shopkeeper", child: Text("Shopkeeper")),
-                  ],
-                  onChanged: (value) => setState(() => _role = value!),
-                  decoration: const InputDecoration(
-                    labelText: 'Business Role',
-                    prefixIcon: Icon(Icons.business_center),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                DropdownButtonFormField(
-                  value: _category,
-                  items: const [
-                    DropdownMenuItem(value: "Grocery", child: Text("Grocery")),
-                    DropdownMenuItem(value: "Vegetables", child: Text("Vegetables")),
-                    DropdownMenuItem(value: "Stationery", child: Text("Stationery")),
-                    DropdownMenuItem(value: "Medical", child: Text("Medical Store")),
-                    DropdownMenuItem(value: "Electronics", child: Text("Electronics")),
-                    DropdownMenuItem(value: "Clothing", child: Text("Clothing")),
-                  ],
-                  onChanged: (value) => setState(() => _category = value!),
-                  decoration: const InputDecoration(
-                    labelText: 'Shop Category',
-                    prefixIcon: Icon(Icons.category),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Business Address',
-                    prefixIcon: Icon(Icons.location_on),
-                  ),
+                  validator: (v) =>
+                  v == null || v.isEmpty ? "Enter shop name" : null,
                 ),
 
-                const SizedBox(height: 25),
+              if (_role != "Customer") const SizedBox(height: 10),
 
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    child: const Text('Register Business'),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                  ),
+              // ADDRESS
+              TextFormField(
+                controller: _addressController,
+                decoration: const InputDecoration(
+                  labelText: "Address",
+                  prefixIcon: Icon(Icons.location_on),
                 ),
-              ],
-            ),
+                validator: (v) =>
+                v == null || v.isEmpty ? "Enter address" : null,
+              ),
+
+              const SizedBox(height: 10),
+
+              // PASSWORD
+              TextFormField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: "Password",
+                  prefixIcon: Icon(Icons.lock),
+                ),
+                validator: (v) {
+                  if (v == null || v.length < 6) {
+                    return "Password must be at least 6 characters";
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 10),
+
+              // CONFIRM PASSWORD
+              TextFormField(
+                controller: _confirmPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: "Confirm Password",
+                  prefixIcon: Icon(Icons.lock_outline),
+                ),
+                validator: (v) {
+                  if (v != _passwordController.text) {
+                    return "Passwords do not match";
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _register,
+                  child: const Text("Create Account"),
+                ),
+              ),
+            ],
           ),
         ),
       ),

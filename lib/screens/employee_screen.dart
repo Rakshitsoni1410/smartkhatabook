@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'employee_salary_screen.dart';
 
 class EmployeeScreen extends StatefulWidget {
   const EmployeeScreen({super.key});
@@ -11,9 +12,9 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
   final List<Map<String, String>> _employees = [];
 
   final _formKey = GlobalKey<FormState>();
-
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+
   String _role = "Cashier";
 
   void _addEmployee() {
@@ -56,24 +57,18 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
 
               const SizedBox(height: 16),
 
-              // 🔹 NAME
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
                   labelText: "Employee Name",
                   prefixIcon: Icon(Icons.person),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Enter employee name";
-                  }
-                  return null;
-                },
+                validator: (v) =>
+                v == null || v.isEmpty ? "Enter name" : null,
               ),
 
               const SizedBox(height: 10),
 
-              // 🔹 MOBILE NUMBER (10 DIGIT VALIDATION)
               TextFormField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
@@ -83,12 +78,10 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
                   prefixIcon: Icon(Icons.phone),
                   counterText: "",
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Enter mobile number";
-                  }
-                  if (!RegExp(r'^[0-9]{10}$').hasMatch(value)) {
-                    return "Enter valid 10-digit mobile number";
+                validator: (v) {
+                  if (v == null || v.isEmpty) return "Enter mobile number";
+                  if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) {
+                    return "Enter valid 10-digit number";
                   }
                   return null;
                 },
@@ -96,7 +89,6 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
 
               const SizedBox(height: 10),
 
-              // 🔹 ROLE
               DropdownButtonFormField(
                 value: _role,
                 items: const [
@@ -135,8 +127,6 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = Theme.of(context).colorScheme.onSurface;
-
     return Scaffold(
       appBar: AppBar(title: const Text("Employees")),
 
@@ -147,32 +137,8 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
       ),
 
       body: _employees.isEmpty
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.group_off,
-              size: 70,
-              color:
-              Theme.of(context).primaryColor.withOpacity(0.6),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "No Employees Yet",
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "Tap + button to add staff",
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
+          ? const Center(
+        child: Text("No Employees Added"),
       )
           : ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -190,24 +156,36 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
               ),
               title: Text(
                 emp["name"]!,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
-              subtitle: Text(
-                "${emp["role"]} • ${emp["phone"]}",
-                style: TextStyle(
-                  color: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.color,
-                ),
-              ),
-              trailing: IconButton(
-                icon:
-                const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _removeEmployee(index),
+              subtitle:
+              Text("${emp["role"]} • ${emp["phone"]}"),
+
+              trailing: Wrap(
+                spacing: 6,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.currency_rupee,
+                        color: Colors.green),
+                    tooltip: "Salary",
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => EmployeeSalaryScreen(
+                            name: emp["name"]!,
+                            role: emp["role"]!,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon:
+                    const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _removeEmployee(index),
+                  ),
+                ],
               ),
             ),
           );
