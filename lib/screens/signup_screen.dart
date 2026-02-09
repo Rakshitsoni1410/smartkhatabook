@@ -13,32 +13,46 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final _nameCtrl = TextEditingController();
-  final _mobileCtrl = TextEditingController();
-  final _shopCtrl = TextEditingController();
-  final _addressCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-  final _confirmCtrl = TextEditingController();
+  final _nameController = TextEditingController();
+  final _mobileController = TextEditingController();
+  final _shopController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   UserRole _role = UserRole.retailer;
-  File? _logo;
+  File? _logoFile;
 
-  final ImagePicker _picker = ImagePicker();
-
+  // 📷 PICK LOGO (OPTIONAL)
   Future<void> _pickLogo() async {
-    final XFile? image =
-    await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() => _logo = File(image.path));
+    final picker = ImagePicker();
+    final picked =
+    await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+
+    if (picked != null) {
+      setState(() {
+        _logoFile = File(picked.path);
+      });
     }
   }
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
-    // 🔹 DEMO SUBMIT (Backend later)
+    // 🔐 DEMO DATA (later send to backend)
+    final data = {
+      "name": _nameController.text,
+      "mobile": _mobileController.text,
+      "role": _role.name,
+      "shopName": _role == UserRole.customer ? null : _shopController.text,
+      "address": _addressController.text,
+      "logo": _logoFile?.path,
+    };
+
+    debugPrint("SIGNUP DATA: $data");
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Account created successfully")),
+      const SnackBar(content: Text("Account Created Successfully")),
     );
 
     Navigator.pop(context);
@@ -54,44 +68,22 @@ class _SignupScreenState extends State<SignupScreen> {
           key: _formKey,
           child: Column(
             children: [
-              /// 🔹 LOGO UPLOAD
-              GestureDetector(
-                onTap: _pickLogo,
-                child: CircleAvatar(
-                  radius: 42,
-                  backgroundColor: Colors.blue.shade100,
-                  backgroundImage:
-                  _logo != null ? FileImage(_logo!) : null,
-                  child: _logo == null
-                      ? const Icon(Icons.camera_alt,
-                      size: 28, color: Colors.blue)
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                "Upload Shop Logo (optional)",
-                style: TextStyle(color: Colors.grey),
-              ),
-
-              const SizedBox(height: 20),
-
-              /// 🔹 FULL NAME
+              // 🔹 FULL NAME
               TextFormField(
-                controller: _nameCtrl,
+                controller: _nameController,
                 decoration: const InputDecoration(
                   labelText: "Full Name",
                   prefixIcon: Icon(Icons.person),
                 ),
                 validator: (v) =>
-                v!.isEmpty ? "Enter full name" : null,
+                v == null || v.isEmpty ? "Enter full name" : null,
               ),
 
               const SizedBox(height: 12),
 
-              /// 🔹 MOBILE NUMBER (10 DIGIT)
+              // 🔹 MOBILE (10 DIGIT)
               TextFormField(
-                controller: _mobileCtrl,
+                controller: _mobileController,
                 keyboardType: TextInputType.phone,
                 maxLength: 10,
                 decoration: const InputDecoration(
@@ -112,44 +104,74 @@ class _SignupScreenState extends State<SignupScreen> {
 
               const SizedBox(height: 12),
 
-              /// 🔹 USER ROLE
+              // 🔹 USER ROLE
               DropdownButtonFormField<UserRole>(
                 value: _role,
                 decoration: const InputDecoration(
                   labelText: "User Role",
-                  prefixIcon: Icon(Icons.business),
+                  prefixIcon: Icon(Icons.badge),
                 ),
                 items: const [
                   DropdownMenuItem(
-                    value: UserRole.wholesaler,
-                    child: Text("Wholesaler"),
-                  ),
+                      value: UserRole.wholesaler,
+                      child: Text("Wholesaler")),
                   DropdownMenuItem(
-                    value: UserRole.retailer,
-                    child: Text("Retailer"),
-                  ),
+                      value: UserRole.retailer,
+                      child: Text("Retailer")),
+                  DropdownMenuItem(
+                      value: UserRole.customer,
+                      child: Text("Customer")),
                 ],
                 onChanged: (v) => setState(() => _role = v!),
               ),
 
               const SizedBox(height: 12),
 
-              /// 🔹 SHOP / BUSINESS NAME
-              TextFormField(
-                controller: _shopCtrl,
-                decoration: const InputDecoration(
-                  labelText: "Shop / Business Name",
-                  prefixIcon: Icon(Icons.store),
+              // 🔹 SHOP NAME (ONLY FOR SHOP OWNERS)
+              if (_role != UserRole.customer)
+                TextFormField(
+                  controller: _shopController,
+                  decoration: const InputDecoration(
+                    labelText: "Shop / Business Name",
+                    prefixIcon: Icon(Icons.store),
+                  ),
+                  validator: (v) {
+                    if (_role != UserRole.customer &&
+                        (v == null || v.isEmpty)) {
+                      return "Enter shop name";
+                    }
+                    return null;
+                  },
                 ),
-                validator: (v) =>
-                v!.isEmpty ? "Enter shop name" : null,
-              ),
+
+              if (_role != UserRole.customer) const SizedBox(height: 12),
+
+              // 🔹 LOGO UPLOAD (OPTIONAL)
+              if (_role != UserRole.customer)
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundImage:
+                      _logoFile != null ? FileImage(_logoFile!) : null,
+                      child: _logoFile == null
+                          ? const Icon(Icons.store)
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    TextButton.icon(
+                      onPressed: _pickLogo,
+                      icon: const Icon(Icons.upload),
+                      label: const Text("Upload Logo (Optional)"),
+                    ),
+                  ],
+                ),
 
               const SizedBox(height: 12),
 
-              /// 🔹 ADDRESS
+              // 🔹 ADDRESS
               TextFormField(
-                controller: _addressCtrl,
+                controller: _addressController,
                 decoration: const InputDecoration(
                   labelText: "Address",
                   prefixIcon: Icon(Icons.location_on),
@@ -158,37 +180,38 @@ class _SignupScreenState extends State<SignupScreen> {
 
               const SizedBox(height: 12),
 
-              /// 🔹 PASSWORD
+              // 🔹 PASSWORD
               TextFormField(
-                controller: _passwordCtrl,
+                controller: _passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: "Password",
                   prefixIcon: Icon(Icons.lock),
                 ),
                 validator: (v) =>
-                v!.length < 6 ? "Min 6 characters" : null,
+                v == null || v.length < 6 ? "Min 6 characters" : null,
               ),
 
               const SizedBox(height: 12),
 
-              /// 🔹 CONFIRM PASSWORD
+              // 🔹 CONFIRM PASSWORD
               TextFormField(
-                controller: _confirmCtrl,
+                controller: _confirmPasswordController,
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: "Confirm Password",
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
-                validator: (v) =>
-                v != _passwordCtrl.text
-                    ? "Passwords do not match"
-                    : null,
+                validator: (v) {
+                  if (v != _passwordController.text) {
+                    return "Passwords do not match";
+                  }
+                  return null;
+                },
               ),
 
               const SizedBox(height: 24),
 
-              /// 🔹 SUBMIT
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
