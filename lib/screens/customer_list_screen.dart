@@ -68,71 +68,91 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
   // ✅ Open Add Customer Bottom Sheet
   void openAddCustomerSheet() {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                "Add New Customer",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Name Input
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: "Customer Name",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Add New Customer",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-              const SizedBox(height: 15),
 
-              // Phone Input
-              TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: "Phone Number",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                const SizedBox(height: 20),
+
+                // ✅ Name Input
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: "Customer Name",
+                    prefixIcon: const Icon(Icons.person),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
 
-              // Save Button
-              ElevatedButton(
-                onPressed: addCustomer,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50),
+                const SizedBox(height: 15),
+
+                // ✅ Phone Input
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  maxLength: 10,
+                  decoration: InputDecoration(
+                    labelText: "Phone Number",
+                    prefixIcon: const Icon(Icons.phone),
+                    counterText: "",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
                 ),
-                child: const Text("Save Customer"),
-              ),
-            ],
+
+                const SizedBox(height: 20),
+
+                // ✅ Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Cancel"),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: addCustomer,
+                        child: const Text("Save"),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
