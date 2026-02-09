@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-enum ReminderLevel { friendly, warning, finalNotice }
-
 class CustomerDetail extends StatefulWidget {
   final String name;
   final String phone;
@@ -15,15 +13,13 @@ class CustomerDetail extends StatefulWidget {
   });
 
   @override
-  State<CustomerDetail> createState() => _CustomerDetailPageState();
+  State<CustomerDetail> createState() => _CustomerDetailState();
 }
 
-class _CustomerDetailPageState extends State<CustomerDetail> {
-  // ✅ Transactions List
-  List<Map<String, dynamic>> transactions = [];
-
-  // ✅ Balance Variable
+class _CustomerDetailState extends State<CustomerDetail> {
   late double currentBalance;
+
+  List<Map<String, dynamic>> transactions = [];
 
   @override
   void initState() {
@@ -31,65 +27,50 @@ class _CustomerDetailPageState extends State<CustomerDetail> {
     currentBalance = widget.balance;
   }
 
-  String formatCurrency(double amount) {
-    return "₹${amount.toStringAsFixed(0)}";
+  String formatCurrency(double amount) => "₹${amount.toStringAsFixed(0)}";
+
+  String formatDateTime(DateTime dt) {
+    return "${dt.day}/${dt.month}/${dt.year}  ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
-  // ✅ 3-Level Reminder Function
-  void sendReminder(ReminderLevel level, String name, double balance) {
-    String message;
+  // 🔔 REMINDER LEVELS
+  void sendReminder(String level) {
+    String msg;
     Color color;
 
-    switch (level) {
-      case ReminderLevel.friendly:
-        message = "Friendly reminder sent";
-        color = Colors.blue;
-        break;
-      case ReminderLevel.warning:
-        message = "Warning reminder sent";
-        color = Colors.orange;
-        break;
-      case ReminderLevel.finalNotice:
-        message = "FINAL reminder sent";
-        color = Colors.red;
-        break;
+    if (level == "friendly") {
+      msg = "Friendly reminder sent 🙂";
+      color = Colors.blue;
+    } else if (level == "warning") {
+      msg = "Warning reminder sent ⚠️";
+      color = Colors.orange;
+    } else {
+      msg = "Final reminder sent 🔴";
+      color = Colors.red;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("$message to $name for ₹$balance"),
+        content: Text(msg),
         backgroundColor: color,
       ),
     );
   }
 
-  // ✅ Delete Customer
-  void deleteCustomer() {
-    Navigator.pop(context);
-    Navigator.pop(context, true);
-  }
-
-  // ✅ Add Transaction + Timestamp
   void openTransactionSheet(String type) async {
     final amount = await showModalBottomSheet<double>(
       context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      isScrollControlled: true,
       builder: (_) => AddTransactionSheet(type: type),
     );
 
     if (amount == null) return;
 
-    final now = DateTime.now();
-
     setState(() {
       transactions.insert(0, {
-        "id": now.toString(),
         "type": type,
         "amount": amount,
-        "date":
-        "${now.day}/${now.month}/${now.year}  ${now.hour}:${now.minute.toString().padLeft(2, '0')}",
+        "time": DateTime.now(),
       });
 
       if (type == "gave") {
@@ -102,51 +83,18 @@ class _CustomerDetailPageState extends State<CustomerDetail> {
 
   @override
   Widget build(BuildContext context) {
-    final name = widget.name;
-    final phone = widget.phone;
-    final isPositive = currentBalance > 0;
+    bool isPositive = currentBalance > 0;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-
       appBar: AppBar(
-        title: Text(name),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text("Delete Customer?"),
-                  content: Text(
-                    "This will permanently delete $name and all transactions.",
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("Cancel"),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                      ),
-                      onPressed: deleteCustomer,
-                      child: const Text("Delete"),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
+        title: Text(widget.name),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ✅ Customer Card
+            /// CUSTOMER INFO
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -155,65 +103,46 @@ class _CustomerDetailPageState extends State<CustomerDetail> {
               ),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Colors.blue.shade100,
-                        child: Text(
-                          name[0].toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
-                        ),
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundColor: Colors.blue.shade100,
+                    child: Text(
+                      widget.name[0].toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
                       ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              const Icon(Icons.phone, size: 16),
-                              const SizedBox(width: 6),
-                              Text(phone),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
+                  const SizedBox(height: 10),
+                  Text(
+                    widget.name,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(widget.phone),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // ✅ Balance
+                  /// BALANCE
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: isPositive
                           ? Colors.red.shade50
                           : Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          currentBalance == 0
-                              ? "Settled"
-                              : isPositive
+                          isPositive
                               ? "Customer will pay you"
                               : "You need to return",
-                          style: TextStyle(color: Colors.grey.shade700),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -228,31 +157,35 @@ class _CustomerDetailPageState extends State<CustomerDetail> {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // ✅ Reminder (3-Level)
-                  PopupMenuButton<ReminderLevel>(
-                    onSelected: (level) =>
-                        sendReminder(level, name, currentBalance.abs()),
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: ReminderLevel.friendly,
-                        child: Text("Friendly Reminder"),
+                  /// 🔔 REMINDERS (3 LEVELS)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => sendReminder("friendly"),
+                          child: const Text("Friendly"),
+                        ),
                       ),
-                      PopupMenuItem(
-                        value: ReminderLevel.warning,
-                        child: Text("Warning"),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => sendReminder("warning"),
+                          child: const Text("Warning"),
+                        ),
                       ),
-                      PopupMenuItem(
-                        value: ReminderLevel.finalNotice,
-                        child: Text("Final Notice"),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                          ),
+                          onPressed: () => sendReminder("final"),
+                          child: const Text("Final"),
+                        ),
                       ),
                     ],
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.notifications),
-                      label: const Text("Send Reminder"),
-                      onPressed: null,
-                    ),
                   ),
                 ],
               ),
@@ -260,14 +193,13 @@ class _CustomerDetailPageState extends State<CustomerDetail> {
 
             const SizedBox(height: 20),
 
-            // ✅ Transaction Buttons
+            /// TRANSACTION BUTTONS
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     onPressed: () => openTransactionSheet("gave"),
                     child: const Text("You Gave"),
@@ -278,7 +210,6 @@ class _CustomerDetailPageState extends State<CustomerDetail> {
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     onPressed: () => openTransactionSheet("got"),
                     child: const Text("You Got"),
@@ -287,28 +218,30 @@ class _CustomerDetailPageState extends State<CustomerDetail> {
               ],
             ),
 
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
 
+            /// HISTORY
             Align(
               alignment: Alignment.centerLeft,
-              child: const Text(
+              child: Text(
                 "Transaction History",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-
             const SizedBox(height: 10),
 
-            transactions.isNotEmpty
-                ? Column(
-              children: transactions
-                  .map((txn) =>
-                  TransactionCard(transaction: txn))
-                  .toList(),
-            )
-                : const Padding(
+            transactions.isEmpty
+                ? const Padding(
               padding: EdgeInsets.all(20),
               child: Text("No transactions yet"),
+            )
+                : Column(
+              children: transactions
+                  .map((t) => TransactionCard(
+                transaction: t,
+                formatTime: formatDateTime,
+              ))
+                  .toList(),
             ),
           ],
         ),
@@ -317,32 +250,36 @@ class _CustomerDetailPageState extends State<CustomerDetail> {
   }
 }
 
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
 class TransactionCard extends StatelessWidget {
   final Map<String, dynamic> transaction;
+  final String Function(DateTime) formatTime;
 
-  const TransactionCard({super.key, required this.transaction});
+  const TransactionCard({
+    super.key,
+    required this.transaction,
+    required this.formatTime,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isGave = transaction["type"] == "gave";
+    bool isGave = transaction["type"] == "gave";
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
       child: ListTile(
         leading: Icon(
           isGave ? Icons.arrow_upward : Icons.arrow_downward,
           color: isGave ? Colors.red : Colors.green,
         ),
         title: Text("₹${transaction["amount"]}"),
-        subtitle: Text(transaction["date"]),
+        subtitle: Text(formatTime(transaction["time"])),
       ),
     );
   }
 }
 
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
 class AddTransactionSheet extends StatefulWidget {
   final String type;
@@ -354,43 +291,45 @@ class AddTransactionSheet extends StatefulWidget {
 }
 
 class _AddTransactionSheetState extends State<AddTransactionSheet> {
-  final TextEditingController amountController = TextEditingController();
+  final TextEditingController controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             widget.type == "gave"
-                ? "Add You Gave (Udhar)"
-                : "Add You Got (Payment)",
+                ? "Add You Gave"
+                : "Add You Got",
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           TextField(
-            controller: amountController,
+            controller: controller,
             keyboardType: TextInputType.number,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: "Amount",
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
             ),
           ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {
-              final amount =
-                  double.tryParse(amountController.text.trim()) ?? 0;
-              if (amount > 0) Navigator.pop(context, amount);
+              final amount = double.tryParse(controller.text);
+              if (amount == null || amount <= 0) return;
+              Navigator.pop(context, amount);
             },
-            child: const Text("Save Transaction"),
+            child: const Text("Save"),
           ),
         ],
       ),
