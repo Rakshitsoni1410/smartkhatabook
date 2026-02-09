@@ -1,4 +1,5 @@
 enum UserRole {
-  shopkeeper,
+  wholesaler,
+  retailer,
   customer,
 }

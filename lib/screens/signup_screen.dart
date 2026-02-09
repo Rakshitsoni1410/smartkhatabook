@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../models/user_role.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -10,23 +13,35 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  final _shopController = TextEditingController();
-  final _addressController = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _mobileCtrl = TextEditingController();
+  final _shopCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
 
-  String _role = "Retailer";
+  UserRole _role = UserRole.retailer;
+  File? _logo;
 
-  void _register() {
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickLogo() async {
+    final XFile? image =
+    await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() => _logo = File(image.path));
+    }
+  }
+
+  void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
+    // 🔹 DEMO SUBMIT (Backend later)
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Registration successful")),
+      const SnackBar(content: Text("Account created successfully")),
     );
 
-    Navigator.pop(context); // back to login
+    Navigator.pop(context);
   }
 
   @override
@@ -39,22 +54,44 @@ class _SignupScreenState extends State<SignupScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // NAME
+              /// 🔹 LOGO UPLOAD
+              GestureDetector(
+                onTap: _pickLogo,
+                child: CircleAvatar(
+                  radius: 42,
+                  backgroundColor: Colors.blue.shade100,
+                  backgroundImage:
+                  _logo != null ? FileImage(_logo!) : null,
+                  child: _logo == null
+                      ? const Icon(Icons.camera_alt,
+                      size: 28, color: Colors.blue)
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                "Upload Shop Logo (optional)",
+                style: TextStyle(color: Colors.grey),
+              ),
+
+              const SizedBox(height: 20),
+
+              /// 🔹 FULL NAME
               TextFormField(
-                controller: _nameController,
+                controller: _nameCtrl,
                 decoration: const InputDecoration(
                   labelText: "Full Name",
                   prefixIcon: Icon(Icons.person),
                 ),
                 validator: (v) =>
-                v == null || v.isEmpty ? "Enter name" : null,
+                v!.isEmpty ? "Enter full name" : null,
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
-              // MOBILE
+              /// 🔹 MOBILE NUMBER (10 DIGIT)
               TextFormField(
-                controller: _phoneController,
+                controller: _mobileCtrl,
                 keyboardType: TextInputType.phone,
                 maxLength: 10,
                 decoration: const InputDecoration(
@@ -63,7 +100,9 @@ class _SignupScreenState extends State<SignupScreen> {
                   counterText: "",
                 ),
                 validator: (v) {
-                  if (v == null || v.isEmpty) return "Enter mobile number";
+                  if (v == null || v.isEmpty) {
+                    return "Enter mobile number";
+                  }
                   if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) {
                     return "Enter valid 10-digit number";
                   }
@@ -71,10 +110,10 @@ class _SignupScreenState extends State<SignupScreen> {
                 },
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
-              // ROLE
-              DropdownButtonFormField(
+              /// 🔹 USER ROLE
+              DropdownButtonFormField<UserRole>(
                 value: _role,
                 decoration: const InputDecoration(
                   labelText: "User Role",
@@ -82,84 +121,78 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 items: const [
                   DropdownMenuItem(
-                      value: "Wholesaler", child: Text("Wholesaler")),
+                    value: UserRole.wholesaler,
+                    child: Text("Wholesaler"),
+                  ),
                   DropdownMenuItem(
-                      value: "Retailer", child: Text("Retailer")),
-                  DropdownMenuItem(
-                      value: "Customer", child: Text("Customer")),
+                    value: UserRole.retailer,
+                    child: Text("Retailer"),
+                  ),
                 ],
                 onChanged: (v) => setState(() => _role = v!),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
-              // SHOP NAME (not for customer)
-              if (_role != "Customer")
-                TextFormField(
-                  controller: _shopController,
-                  decoration: const InputDecoration(
-                    labelText: "Shop / Business Name",
-                    prefixIcon: Icon(Icons.store),
-                  ),
-                  validator: (v) =>
-                  v == null || v.isEmpty ? "Enter shop name" : null,
-                ),
-
-              if (_role != "Customer") const SizedBox(height: 10),
-
-              // ADDRESS
+              /// 🔹 SHOP / BUSINESS NAME
               TextFormField(
-                controller: _addressController,
+                controller: _shopCtrl,
+                decoration: const InputDecoration(
+                  labelText: "Shop / Business Name",
+                  prefixIcon: Icon(Icons.store),
+                ),
+                validator: (v) =>
+                v!.isEmpty ? "Enter shop name" : null,
+              ),
+
+              const SizedBox(height: 12),
+
+              /// 🔹 ADDRESS
+              TextFormField(
+                controller: _addressCtrl,
                 decoration: const InputDecoration(
                   labelText: "Address",
                   prefixIcon: Icon(Icons.location_on),
                 ),
-                validator: (v) =>
-                v == null || v.isEmpty ? "Enter address" : null,
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
-              // PASSWORD
+              /// 🔹 PASSWORD
               TextFormField(
-                controller: _passwordController,
+                controller: _passwordCtrl,
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: "Password",
                   prefixIcon: Icon(Icons.lock),
                 ),
-                validator: (v) {
-                  if (v == null || v.length < 6) {
-                    return "Password must be at least 6 characters";
-                  }
-                  return null;
-                },
+                validator: (v) =>
+                v!.length < 6 ? "Min 6 characters" : null,
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
-              // CONFIRM PASSWORD
+              /// 🔹 CONFIRM PASSWORD
               TextFormField(
-                controller: _confirmPasswordController,
+                controller: _confirmCtrl,
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: "Confirm Password",
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
-                validator: (v) {
-                  if (v != _passwordController.text) {
-                    return "Passwords do not match";
-                  }
-                  return null;
-                },
+                validator: (v) =>
+                v != _passwordCtrl.text
+                    ? "Passwords do not match"
+                    : null,
               ),
 
               const SizedBox(height: 24),
 
+              /// 🔹 SUBMIT
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _register,
+                  onPressed: _submit,
                   child: const Text("Create Account"),
                 ),
               ),
