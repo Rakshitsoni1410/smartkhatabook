@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -19,6 +21,21 @@ class _SignupScreenState extends State<SignupScreen> {
 
   String _role = "Retailer";
 
+  File? _logoFile;
+  final ImagePicker _picker = ImagePicker();
+
+  // Pick Image
+  Future<void> _pickLogo() async {
+    final XFile? image =
+    await _picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      setState(() {
+        _logoFile = File(image.path);
+      });
+    }
+  }
+
   void _register() {
     if (!_formKey.currentState!.validate()) return;
 
@@ -26,7 +43,7 @@ class _SignupScreenState extends State<SignupScreen> {
       const SnackBar(content: Text("Registration successful")),
     );
 
-    Navigator.pop(context); // back to login
+    Navigator.pop(context);
   }
 
   @override
@@ -39,6 +56,7 @@ class _SignupScreenState extends State<SignupScreen> {
           key: _formKey,
           child: Column(
             children: [
+
               // NAME
               TextFormField(
                 controller: _nameController,
@@ -94,7 +112,7 @@ class _SignupScreenState extends State<SignupScreen> {
               const SizedBox(height: 10),
 
               // SHOP NAME (not for customer)
-              if (_role != "Customer")
+              if (_role != "Customer") ...[
                 TextFormField(
                   controller: _shopController,
                   decoration: const InputDecoration(
@@ -105,7 +123,45 @@ class _SignupScreenState extends State<SignupScreen> {
                   v == null || v.isEmpty ? "Enter shop name" : null,
                 ),
 
-              if (_role != "Customer") const SizedBox(height: 10),
+                const SizedBox(height: 15),
+
+                // LOGO UPLOAD
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Shop Logo (Optional)",
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+
+                    GestureDetector(
+                      onTap: _pickLogo,
+                      child: Container(
+                        height: 120,
+                        width: 120,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: _logoFile == null
+                            ? const Center(
+                          child: Icon(Icons.add_a_photo, size: 35),
+                        )
+                            : ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            _logoFile!,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+              ],
 
               // ADDRESS
               TextFormField(
