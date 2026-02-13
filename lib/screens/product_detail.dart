@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 
 class ProductDetails extends StatefulWidget {
   final Map<String, dynamic> product;
+  final String userRole;
   final VoidCallback onDelete;
   final Function(Map<String, dynamic>) onUpdate;
-  final String userRole;
 
   const ProductDetails({
     super.key,
     required this.product,
+    required this.userRole,
     required this.onDelete,
     required this.onUpdate,
-    required this.userRole,
   });
 
   @override
@@ -32,48 +32,126 @@ class _ProductDetailsState extends State<ProductDetails> {
     return "₹${getNumber(amount).toStringAsFixed(2)}";
   }
 
+  // ================= EDIT PRODUCT =================
   void editProduct() {
     TextEditingController nameCtrl =
     TextEditingController(text: widget.product["name"]);
+    TextEditingController categoryCtrl =
+    TextEditingController(text: widget.product["category"]);
+    TextEditingController purchaseCtrl =
+    TextEditingController(text: widget.product["purchase"].toString());
+    TextEditingController sellingCtrl =
+    TextEditingController(text: widget.product["selling"].toString());
+    TextEditingController stockCtrl =
+    TextEditingController(text: widget.product["stockQty"].toString());
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Edit Product"),
-        content: TextField(
-          controller: nameCtrl,
-          decoration: const InputDecoration(
-            labelText: "Product Name",
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+
+                const Text(
+                  "Edit Product",
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
+                ),
+
+                const SizedBox(height: 15),
+
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: "Product Name",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                TextField(
+                  controller: categoryCtrl,
+                  decoration: const InputDecoration(
+                    labelText: "Category",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                TextField(
+                  controller: purchaseCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "Purchase ₹",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                TextField(
+                  controller: sellingCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "Selling ₹",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                TextField(
+                  controller: stockCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "Stock Quantity",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                ElevatedButton(
+                  onPressed: () {
+                    Map<String, dynamic> updatedProduct = {
+                      ...widget.product,
+                      "name": nameCtrl.text,
+                      "category": categoryCtrl.text,
+                      "purchase": double.parse(purchaseCtrl.text),
+                      "selling": double.parse(sellingCtrl.text),
+                      "profit": double.parse(sellingCtrl.text) -
+                          double.parse(purchaseCtrl.text),
+                      "stockQty": int.parse(stockCtrl.text),
+                      "inStock":
+                      int.parse(stockCtrl.text) > 0,
+                    };
+
+                    widget.onUpdate(updatedProduct);
+                    Navigator.pop(context);
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Update Product"),
+                ),
+              ],
+            ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                widget.product["name"] = nameCtrl.text;
-              });
-              widget.onUpdate(widget.product);
-              Navigator.pop(context);
-            },
-            child: const Text("Save"),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  void orderToWholesaler() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Order placed to wholesaler successfully"),
-      ),
-    );
-  }
-
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
@@ -84,7 +162,7 @@ class _ProductDetailsState extends State<ProductDetails> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(product["name"] ?? "Product Details"),
+        title: Text(product["name"]),
         backgroundColor: Colors.green.shade700,
         actions: [
           IconButton(
@@ -97,6 +175,7 @@ class _ProductDetailsState extends State<ProductDetails> {
           ),
         ],
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -106,7 +185,8 @@ class _ProductDetailsState extends State<ProductDetails> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius:
+                BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.grey.shade300,
@@ -115,65 +195,39 @@ class _ProductDetailsState extends State<ProductDetails> {
                 ],
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                CrossAxisAlignment.start,
                 children: [
 
                   Text(
-                    product["name"] ?? "",
+                    product["name"],
                     style: const TextStyle(
                       fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                      fontWeight:
+                      FontWeight.bold,
                     ),
                   ),
 
                   const SizedBox(height: 10),
 
-                  Text("Category: ${product["category"] ?? "-"}"),
+                  Text("Category: ${product["category"]}"),
 
                   const SizedBox(height: 15),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("Purchase Price:"),
-                      Text(formatCurrency(purchase)),
-                    ],
-                  ),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("Selling Price:"),
-                      Text(formatCurrency(selling)),
-                    ],
-                  ),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Profit:",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        formatCurrency(profit),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
+                  Text("Purchase: ${formatCurrency(purchase)}"),
+                  Text("Selling: ${formatCurrency(selling)}"),
+                  Text(
+                    "Profit: ${formatCurrency(profit)}",
+                    style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight:
+                        FontWeight.bold),
                   ),
 
                   const SizedBox(height: 15),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("Stock Quantity:"),
-                      Text("${product["stockQty"] ?? 0}"),
-                    ],
-                  ),
+                  Text("Stock: ${product["stockQty"]}"),
+
                 ],
               ),
             ),
@@ -183,13 +237,17 @@ class _ProductDetailsState extends State<ProductDetails> {
             if (widget.userRole == "Retailer")
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: orderToWholesaler,
-                  icon: const Icon(Icons.local_shipping),
-                  label: const Text("Order to Wholesaler"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                  ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(
+                      const SnackBar(
+                          content: Text(
+                              "Order sent to wholesaler")),
+                    );
+                  },
+                  child:
+                  const Text("Order from Wholesaler"),
                 ),
               ),
           ],
