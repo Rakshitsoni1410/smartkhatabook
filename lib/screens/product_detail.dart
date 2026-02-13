@@ -2,8 +2,17 @@ import 'package:flutter/material.dart';
 
 class ProductDetails extends StatefulWidget {
   final Map<String, dynamic> product;
+  final VoidCallback onDelete;
+  final Function(Map<String, dynamic>) onUpdate;
+  final String userRole;
 
-  const ProductDetails({super.key, required this.product});
+  const ProductDetails({
+    super.key,
+    required this.product,
+    required this.onDelete,
+    required this.onUpdate,
+    required this.userRole,
+  });
 
   @override
   State<ProductDetails> createState() => _ProductDetailsState();
@@ -11,48 +20,88 @@ class ProductDetails extends StatefulWidget {
 
 class _ProductDetailsState extends State<ProductDetails> {
 
-  // ✅ SAFE NUMBER CONVERTER (Fix All Errors)
   double getNumber(dynamic value) {
     if (value == null) return 0;
-
     if (value is int) return value.toDouble();
     if (value is double) return value;
-
-    if (value is String) {
-      return double.tryParse(value) ?? 0;
-    }
-
+    if (value is String) return double.tryParse(value) ?? 0;
     return 0;
   }
 
-  // ✅ Currency Formatter
   String formatCurrency(dynamic amount) {
     return "₹${getNumber(amount).toStringAsFixed(2)}";
+  }
+
+  void editProduct() {
+    TextEditingController nameCtrl =
+    TextEditingController(text: widget.product["name"]);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Edit Product"),
+        content: TextField(
+          controller: nameCtrl,
+          decoration: const InputDecoration(
+            labelText: "Product Name",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                widget.product["name"] = nameCtrl.text;
+              });
+              widget.onUpdate(widget.product);
+              Navigator.pop(context);
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void orderToWholesaler() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Order placed to wholesaler successfully"),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
 
-    // ✅ Safe Values
     double purchase = getNumber(product["purchase"]);
     double selling = getNumber(product["selling"]);
     double profit = selling - purchase;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-
       appBar: AppBar(
         title: Text(product["name"] ?? "Product Details"),
         backgroundColor: Colors.green.shade700,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: editProduct,
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: widget.onDelete,
+          ),
+        ],
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
 
-            // ✅ Product Info Card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -83,7 +132,6 @@ class _ProductDetailsState extends State<ProductDetails> {
 
                   const SizedBox(height: 15),
 
-                  // ✅ Pricing Section
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -119,7 +167,6 @@ class _ProductDetailsState extends State<ProductDetails> {
 
                   const SizedBox(height: 15),
 
-                  // ✅ Stock Info
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -133,18 +180,16 @@ class _ProductDetailsState extends State<ProductDetails> {
 
             const SizedBox(height: 20),
 
-            // ✅ Notes
-            if ((product["notes"] ?? "").toString().isNotEmpty)
-              Container(
+            if (widget.userRole == "Retailer")
+              SizedBox(
                 width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  "Notes: ${product["notes"]}",
-                  style: const TextStyle(fontSize: 15),
+                child: ElevatedButton.icon(
+                  onPressed: orderToWholesaler,
+                  icon: const Icon(Icons.local_shipping),
+                  label: const Text("Order to Wholesaler"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                  ),
                 ),
               ),
           ],
