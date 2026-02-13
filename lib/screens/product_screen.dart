@@ -12,7 +12,6 @@ class _ProductScreenState extends State<ProductScreen> {
   List<Map<String, dynamic>> products = [];
   String searchText = "";
 
-  // ✅ Filtered Products
   List<Map<String, dynamic>> get filteredProducts {
     return products.where((product) {
       final name = (product["name"] ?? "").toLowerCase();
@@ -22,13 +21,6 @@ class _ProductScreenState extends State<ProductScreen> {
           category.contains(searchText.toLowerCase());
     }).toList();
   }
-
-  // ✅ Stock Counts
-  int get inStockCount =>
-      products.where((p) => p["inStock"] == true).length;
-
-  int get outStockCount =>
-      products.where((p) => p["inStock"] == false).length;
 
   // ==============================
   // OPEN ADD PRODUCT FORM
@@ -49,7 +41,22 @@ class _ProductScreenState extends State<ProductScreen> {
     String weightUnit = "kg";
     double profit = 0;
 
-    List<String> weightUnits = ["kg", "gram", "liter", "ml", "piece", "pack", "dozen"];
+    List<String> weightUnits = [
+      "kg",
+      "gram",
+      "liter",
+      "ml",
+      "piece",
+      "pack",
+      "dozen"
+    ];
+
+    // 🔴 Error variables
+    String? nameError;
+    String? categoryError;
+    String? purchaseError;
+    String? sellingError;
+    String? stockError;
 
     showModalBottomSheet(
       context: context,
@@ -62,7 +69,6 @@ class _ProductScreenState extends State<ProductScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
 
-            // ✅ Profit Calculation
             void calcProfit() {
               double purchase = double.tryParse(purchaseCtrl.text) ?? 0;
               double selling = double.tryParse(sellingCtrl.text) ?? 0;
@@ -90,7 +96,9 @@ class _ProductScreenState extends State<ProductScreen> {
                       children: [
                         const Text(
                           "Add New Product",
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close),
@@ -108,6 +116,7 @@ class _ProductScreenState extends State<ProductScreen> {
                       controller: nameCtrl,
                       decoration: InputDecoration(
                         hintText: "Enter product name",
+                        errorText: nameError,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -117,12 +126,13 @@ class _ProductScreenState extends State<ProductScreen> {
                     const SizedBox(height: 12),
 
                     // CATEGORY
-                    const Text("Category"),
+                    const Text("Category *"),
                     const SizedBox(height: 6),
                     TextField(
                       controller: categoryCtrl,
                       decoration: InputDecoration(
                         hintText: "e.g., Grocery, Electronics",
+                        errorText: categoryError,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -157,6 +167,7 @@ class _ProductScreenState extends State<ProductScreen> {
                             onChanged: (_) => calcProfit(),
                             decoration: InputDecoration(
                               labelText: "Purchase Price ₹",
+                              errorText: purchaseError,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -171,6 +182,7 @@ class _ProductScreenState extends State<ProductScreen> {
                             onChanged: (_) => calcProfit(),
                             decoration: InputDecoration(
                               labelText: "Selling Price ₹",
+                              errorText: sellingError,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -204,13 +216,14 @@ class _ProductScreenState extends State<ProductScreen> {
                     const SizedBox(height: 14),
 
                     // STOCK QUANTITY
-                    const Text("Stock Quantity"),
+                    const Text("Stock Quantity *"),
                     const SizedBox(height: 6),
                     TextField(
                       controller: stockCtrl,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         hintText: "0",
+                        errorText: stockError,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -242,7 +255,7 @@ class _ProductScreenState extends State<ProductScreen> {
                     if (inWeight) ...[
                       const SizedBox(height: 10),
 
-                      DropdownButtonFormField(
+                      DropdownButtonFormField<String>(
                         value: weightUnit,
                         items: weightUnits
                             .map((u) => DropdownMenuItem(
@@ -304,17 +317,43 @@ class _ProductScreenState extends State<ProductScreen> {
                         ),
                         child: const Text("Add Product"),
                         onPressed: () {
-                          if (nameCtrl.text.isEmpty) return;
+
+                          setModalState(() {
+                            nameError = nameCtrl.text.trim().isEmpty
+                                ? "Product Name is required"
+                                : null;
+
+                            categoryError = categoryCtrl.text.trim().isEmpty
+                                ? "Category is required"
+                                : null;
+
+                            purchaseError = purchaseCtrl.text.trim().isEmpty
+                                ? "Required"
+                                : null;
+
+                            sellingError = sellingCtrl.text.trim().isEmpty
+                                ? "Required"
+                                : null;
+
+                            stockError = stockCtrl.text.trim().isEmpty
+                                ? "Stock Quantity required"
+                                : null;
+                          });
+
+                          if (nameError != null ||
+                              categoryError != null ||
+                              purchaseError != null ||
+                              sellingError != null ||
+                              stockError != null) {
+                            return;
+                          }
 
                           double purchase =
                               double.tryParse(purchaseCtrl.text) ?? 0;
-
                           double selling =
                               double.tryParse(sellingCtrl.text) ?? 0;
-
                           int stockQty =
                               int.tryParse(stockCtrl.text) ?? 0;
-
                           double weight =
                               double.tryParse(weightCtrl.text) ?? 0;
 
@@ -323,20 +362,15 @@ class _ProductScreenState extends State<ProductScreen> {
                               "name": nameCtrl.text,
                               "category": categoryCtrl.text,
                               "description": descCtrl.text,
-
-                              // ✅ Store as Numbers
                               "purchase": purchase,
                               "selling": selling,
                               "profit": selling - purchase,
                               "stockQty": stockQty,
-
+                              "notes": notesCtrl.text,
                               "inStock": inStock,
                               "inWeight": inWeight,
                               "weightUnit": weightUnit,
                               "weight": weight,
-
-                              "notes": notesCtrl.text,
-                              "createdAt": DateTime.now().toString(),
                             });
                           });
 
@@ -364,18 +398,15 @@ class _ProductScreenState extends State<ProductScreen> {
         title: const Text("All Products"),
         backgroundColor: Colors.green.shade700,
       ),
-
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green.shade700,
         child: const Icon(Icons.add),
         onPressed: openAddProductForm,
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(15),
         child: Column(
           children: [
-            // SEARCH BAR
             TextField(
               decoration: InputDecoration(
                 hintText: "Search product...",
@@ -388,10 +419,7 @@ class _ProductScreenState extends State<ProductScreen> {
                 setState(() => searchText = val);
               },
             ),
-
             const SizedBox(height: 15),
-
-            // PRODUCT LIST
             Expanded(
               child: filteredProducts.isEmpty
                   ? const Center(child: Text("No Products Found"))
