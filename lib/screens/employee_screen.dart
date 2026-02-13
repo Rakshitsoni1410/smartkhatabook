@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'employee_salary_screen.dart';
+import 'employee_detail_screen.dart';
 
 class EmployeeScreen extends StatefulWidget {
   const EmployeeScreen({super.key});
@@ -9,215 +9,387 @@ class EmployeeScreen extends StatefulWidget {
 }
 
 class _EmployeeScreenState extends State<EmployeeScreen> {
-  final List<Map<String, String>> _employees = [];
+  List<Map<String, dynamic>> employees = [];
 
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
+  String searchText = "";
 
-  String _role = "Cashier";
-
-  void _addEmployee() {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _employees.add({
-        "name": _nameController.text,
-        "phone": _phoneController.text,
-        "role": _role,
-      });
-    });
-
-    _nameController.clear();
-    _phoneController.clear();
-    Navigator.pop(context);
+  // ✅ Filter employees
+  List<Map<String, dynamic>> get filteredEmployees {
+    return employees.where((emp) {
+      return emp["name"]
+          .toLowerCase()
+          .contains(searchText.toLowerCase()) ||
+          emp["phone"].contains(searchText);
+    }).toList();
   }
 
-  /// ✅ CENTER SCREEN ADD EMPLOYEE (FIXED)
-  void _showAddDialog() {
-    showDialog(
+  // ✅ Total Salary
+  double get totalSalary {
+    return employees.fold(
+        0, (sum, emp) => sum + (emp["salary"] ?? 0));
+  }
+
+  // ==============================
+  // ADD EMPLOYEE FORM
+  // ==============================
+  void openAddEmployeeForm() {
+    TextEditingController nameCtrl = TextEditingController();
+    TextEditingController phoneCtrl = TextEditingController();
+    TextEditingController salaryCtrl = TextEditingController();
+    TextEditingController notesCtrl = TextEditingController();
+
+    String category = "Salesman";
+
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 20,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-            ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    "Add Employee",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent, // ✅ Important
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AnimatedPadding(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
 
-                  const SizedBox(height: 20),
-
-                  // NAME
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: "Employee Name",
-                      prefixIcon: Icon(Icons.person),
-                    ),
-                    validator: (v) =>
-                    v == null || v.isEmpty ? "Enter name" : null,
-                  ),
-
-                  const SizedBox(height: 15),
-
-                  // PHONE
-                  TextFormField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    maxLength: 10,
-                    decoration: const InputDecoration(
-                      labelText: "Mobile Number",
-                      prefixIcon: Icon(Icons.phone),
-                      counterText: "",
-                    ),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) {
-                        return "Enter mobile number";
-                      }
-                      if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) {
-                        return "Enter valid 10-digit number";
-                      }
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 15),
-
-                  // ROLE
-                  DropdownButtonFormField(
-                    value: _role,
-                    items: const [
-                      DropdownMenuItem(
-                          value: "Cashier", child: Text("Cashier")),
-                      DropdownMenuItem(
-                          value: "Salesman", child: Text("Salesman")),
-                      DropdownMenuItem(
-                          value: "Delivery", child: Text("Delivery Boy")),
-                      DropdownMenuItem(
-                          value: "Manager", child: Text("Manager")),
-                    ],
-                    onChanged: (v) => setState(() => _role = v!),
-                    decoration: const InputDecoration(
-                      labelText: "Employee Role",
-                      prefixIcon: Icon(Icons.badge),
-                    ),
-                  ),
-
-                  const SizedBox(height: 25),
-
-                  // BUTTONS
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text("Cancel"),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _addEmployee,
-                          child: const Text("Save"),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              // ✅ Keyboard Padding Fix
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-            ),
-          ),
+
+              child: SafeArea(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(22),
+                    ),
+                  ),
+
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+
+                        // ✅ Header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "Add Employee",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => Navigator.pop(context),
+                            )
+                          ],
+                        ),
+
+                        const SizedBox(height: 15),
+
+                        // ✅ Name
+                        const Text("Employee Name *"),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: nameCtrl,
+                          decoration: inputStyle("Enter name"),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // ✅ Phone
+                        const Text("Phone Number *"),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: phoneCtrl,
+                          keyboardType: TextInputType.phone,
+                          maxLength: 10,
+                          decoration: inputStyle("Enter phone number"),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // ✅ Category Dropdown
+                        const Text("Employee Category"),
+                        const SizedBox(height: 6),
+                        DropdownButtonFormField(
+                          value: category,
+                          decoration: inputStyle("Select category"),
+                          items: [
+                            "Cashier",
+                            "Salesman",
+                            "Delivery Boy",
+                            "Manager",
+                            "Other"
+                          ]
+                              .map((c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(c),
+                          ))
+                              .toList(),
+                          onChanged: (val) {
+                            setModalState(() {
+                              category = val!;
+                            });
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // ✅ Salary
+                        const Text("Monthly Salary (₹)"),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: salaryCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: inputStyle("Enter salary"),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // ✅ Notes
+                        const Text("Notes (Optional)"),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: notesCtrl,
+                          maxLines: 2,
+                          decoration: inputStyle("Extra details"),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ✅ Save Button (Always Visible)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green.shade700,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text(
+                              "Save Employee",
+                              style: TextStyle(fontSize: 16),
+                            ),
+                            onPressed: () {
+                              if (nameCtrl.text.trim().isEmpty) return;
+
+                              setState(() {
+                                employees.add({
+                                  "date": DateTime.now().toString(),
+                                  "name": nameCtrl.text.trim(),
+                                  "phone": phoneCtrl.text.trim(),
+                                  "category": category,
+                                  "salary":
+                                  double.tryParse(salaryCtrl.text) ?? 0,
+                                  "notes": notesCtrl.text.trim(),
+                                  "payments": <Map<String, dynamic>>[],
+                                });
+                              });
+
+                              Navigator.pop(context);
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  void _removeEmployee(int index) {
-    setState(() => _employees.removeAt(index));
+  // ==============================
+  // UI INPUT STYLE
+  // ==============================
+  InputDecoration inputStyle(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
   }
 
+  // ==============================
+  // MAIN UI
+  // ==============================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Employees")),
-
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddDialog,
-        icon: const Icon(Icons.add),
-        label: const Text("Add"),
+      appBar: AppBar(
+        title: const Text("Employees"),
+        backgroundColor: Colors.green.shade700,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Center(
+              child: Text("${employees.length} employees"),
+            ),
+          )
+        ],
       ),
 
-      body: _employees.isEmpty
-          ? const Center(child: Text("No Employees Added"))
-          : ListView.builder(
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.green.shade700,
+        onPressed: openAddEmployeeForm,
+        child: const Icon(Icons.add),
+      ),
+
+      body: Padding(
         padding: const EdgeInsets.all(16),
-        itemCount: _employees.length,
-        itemBuilder: (context, index) {
-          final emp = _employees[index];
-
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Theme.of(context).primaryColor,
-                child:
-                const Icon(Icons.person, color: Colors.white),
+        child: Column(
+          children: [
+            // Summary Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.grey.shade300),
               ),
-              title: Text(
-                emp["name"]!,
-                style:
-                const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle:
-              Text("${emp["role"]} • ${emp["phone"]}"),
-
-              trailing: Wrap(
-                spacing: 6,
+              child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.currency_rupee,
+                  CircleAvatar(
+                    radius: 25,
+                    backgroundColor: Colors.green.shade100,
+                    child: const Icon(Icons.people,
                         color: Colors.green),
-                    tooltip: "Salary",
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => EmployeeSalaryScreen(
-                            name: emp["name"]!,
-                            role: emp["role"]!,
-                          ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Total Monthly Salary",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      Text(
+                        "₹${totalSalary.toStringAsFixed(0)}",
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
-                      );
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete,
-                        color: Colors.red),
-                    onPressed: () => _removeEmployee(index),
-                  ),
+                      )
+                    ],
+                  )
                 ],
               ),
             ),
-          );
-        },
+
+            const SizedBox(height: 16),
+
+            // Search Bar
+            TextField(
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: "Search by name or phone...",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onChanged: (val) {
+                setState(() => searchText = val);
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            // Employee List
+            Expanded(
+              child: filteredEmployees.isEmpty
+                  ? const Center(
+                child: Text("No employees found"),
+              )
+                  : ListView.builder(
+                itemCount: filteredEmployees.length,
+                itemBuilder: (context, index) {
+                  final emp = filteredEmployees[index];
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              EmployeeDetail(employee: emp),
+                        ),
+                      );
+                    },
+                    child: employeeCard(emp),
+                  );
+                },
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==============================
+  // EMPLOYEE CARD
+  // ==============================
+  Widget employeeCard(Map<String, dynamic> emp) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: Colors.green.shade100,
+            child: Text(
+              emp["name"][0].toUpperCase(),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  emp["name"],
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  emp["phone"],
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+
+          Text(
+            "₹${emp["salary"]}",
+            style: const TextStyle(
+                fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }

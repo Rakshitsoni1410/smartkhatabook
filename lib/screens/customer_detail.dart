@@ -13,13 +13,15 @@ class CustomerDetail extends StatefulWidget {
   });
 
   @override
-  State<CustomerDetail> createState() => _CustomerDetailState();
+  State<CustomerDetail> createState() => _CustomerDetailPageState();
 }
 
-class _CustomerDetailState extends State<CustomerDetail> {
-  late double currentBalance;
-
+class _CustomerDetailPageState extends State<CustomerDetail> {
+  // ✅ Transactions List
   List<Map<String, dynamic>> transactions = [];
+
+  // ✅ Balance Variable
+  late double currentBalance;
 
   @override
   void initState() {
@@ -27,40 +29,30 @@ class _CustomerDetailState extends State<CustomerDetail> {
     currentBalance = widget.balance;
   }
 
-  String formatCurrency(double amount) => "₹${amount.toStringAsFixed(0)}";
-
-  String formatDateTime(DateTime dt) {
-    return "${dt.day}/${dt.month}/${dt.year}  ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
+  // ✅ Currency Formatter
+  String formatCurrency(double amount) {
+    return "₹${amount.toStringAsFixed(0)}";
   }
 
-  // 🔔 REMINDER LEVELS
-  void sendReminder(String level) {
-    String msg;
-    Color color;
-
-    if (level == "friendly") {
-      msg = "Friendly reminder sent 🙂";
-      color = Colors.blue;
-    } else if (level == "warning") {
-      msg = "Warning reminder sent ⚠️";
-      color = Colors.orange;
-    } else {
-      msg = "Final reminder sent 🔴";
-      color = Colors.red;
-    }
+  // ✅ Delete Customer
+  void deleteCustomer() {
+    Navigator.pop(context);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: color,
-      ),
+      const SnackBar(content: Text("Customer Deleted Successfully")),
     );
+
+    Navigator.pop(context, true);
   }
 
+  // ✅ Open Transaction Sheet + Save Transaction
   void openTransactionSheet(String type) async {
     final amount = await showModalBottomSheet<double>(
       context: context,
       isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
       builder: (_) => AddTransactionSheet(type: type),
     );
 
@@ -68,14 +60,19 @@ class _CustomerDetailState extends State<CustomerDetail> {
 
     setState(() {
       transactions.insert(0, {
+        "id": DateTime.now().toString(),
         "type": type,
         "amount": amount,
-        "time": DateTime.now(),
+        "date":
+        "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}",
       });
 
+      // ✅ Shop Owner Logic
       if (type == "gave") {
+        // Customer owes more
         currentBalance += amount;
       } else {
+        // Customer paid you
         currentBalance -= amount;
       }
     });
@@ -83,165 +80,225 @@ class _CustomerDetailState extends State<CustomerDetail> {
 
   @override
   Widget build(BuildContext context) {
-    bool isPositive = currentBalance > 0;
+    String name = widget.name;
+    String phone = widget.phone;
+
+    bool customerOwes = currentBalance > 0;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
+
+      // ✅ AppBar
       appBar: AppBar(
-        title: Text(widget.name),
+        title: Text(name),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text("Delete Customer?"),
+                  content: Text(
+                    "This will permanently delete $name and all transactions.",
+                  ),
+                  actions: [
+                    TextButton(
+                      child: const Text("Cancel"),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      child: const Text("Delete"),
+                      onPressed: deleteCustomer,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
+
+      // ✅ Body
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            /// CUSTOMER INFO
+            // ✅ Customer Info Card
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    blurRadius: 12,
+                    color: Colors.black.withOpacity(0.06),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: Colors.blue.shade100,
-                    child: Text(
-                      widget.name[0].toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
+                  // Avatar + Name + Phone
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 32,
+                        backgroundColor: Colors.blue.shade100,
+                        child: Text(
+                          name[0].toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 14),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            phone,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    widget.name,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(widget.phone),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-                  /// BALANCE
+                  // ✅ Balance Section
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isPositive
+                      color: customerOwes
                           ? Colors.red.shade50
                           : Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isPositive
+                          currentBalance == 0
+                              ? "Settled"
+                              : customerOwes
                               ? "Customer will pay you"
                               : "You need to return",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           formatCurrency(currentBalance.abs()),
                           style: TextStyle(
-                            fontSize: 26,
+                            fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: isPositive ? Colors.red : Colors.green,
+                            color: customerOwes ? Colors.red : Colors.green,
                           ),
                         ),
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 16),
-
-                  /// 🔔 REMINDERS (3 LEVELS)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => sendReminder("friendly"),
-                          child: const Text("Friendly"),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => sendReminder("warning"),
-                          child: const Text("Warning"),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                          ),
-                          onPressed: () => sendReminder("final"),
-                          child: const Text("Final"),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
 
-            /// TRANSACTION BUTTONS
+            // ✅ Transaction Buttons
             Row(
               children: [
+                // 🔴 You Gave
                 Expanded(
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     onPressed: () => openTransactionSheet("gave"),
-                    child: const Text("You Gave"),
+                    child: const Text(
+                      "You Gave",
+                      style: TextStyle(fontSize: 16),
+                    ),
                   ),
                 ),
+
                 const SizedBox(width: 12),
+
+                // 🟢 You Got
                 Expanded(
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     onPressed: () => openTransactionSheet("got"),
-                    child: const Text("You Got"),
+                    child: const Text(
+                      "You Got",
+                      style: TextStyle(fontSize: 16),
+                    ),
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 25),
 
-            /// HISTORY
+            // ✅ Transaction History Title
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 "Transaction History",
-                style: Theme.of(context).textTheme.titleMedium,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-            const SizedBox(height: 10),
 
-            transactions.isEmpty
-                ? const Padding(
-              padding: EdgeInsets.all(20),
-              child: Text("No transactions yet"),
-            )
-                : Column(
+            const SizedBox(height: 12),
+
+            // ✅ Transaction List
+            transactions.isNotEmpty
+                ? Column(
               children: transactions
-                  .map((t) => TransactionCard(
-                transaction: t,
-                formatTime: formatDateTime,
-              ))
+                  .map((txn) => TransactionCard(transaction: txn))
                   .toList(),
+            )
+                : Padding(
+              padding: const EdgeInsets.all(25),
+              child: Text(
+                "No transactions yet",
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                ),
+              ),
             ),
           ],
         ),
@@ -250,36 +307,42 @@ class _CustomerDetailState extends State<CustomerDetail> {
   }
 }
 
-////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 
 class TransactionCard extends StatelessWidget {
   final Map<String, dynamic> transaction;
-  final String Function(DateTime) formatTime;
 
-  const TransactionCard({
-    super.key,
-    required this.transaction,
-    required this.formatTime,
-  });
+  const TransactionCard({super.key, required this.transaction});
 
   @override
   Widget build(BuildContext context) {
     bool isGave = transaction["type"] == "gave";
 
     return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: ListTile(
-        leading: Icon(
-          isGave ? Icons.arrow_upward : Icons.arrow_downward,
-          color: isGave ? Colors.red : Colors.green,
+        leading: CircleAvatar(
+          backgroundColor:
+          isGave ? Colors.red.shade100 : Colors.green.shade100,
+          child: Icon(
+            isGave ? Icons.arrow_upward : Icons.arrow_downward,
+            color: isGave ? Colors.red : Colors.green,
+          ),
         ),
-        title: Text("₹${transaction["amount"]}"),
-        subtitle: Text(formatTime(transaction["time"])),
+        title: Text(
+          "₹${transaction["amount"]}",
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(transaction["date"]),
       ),
     );
   }
 }
 
-////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
 
 class AddTransactionSheet extends StatefulWidget {
   final String type;
@@ -291,7 +354,7 @@ class AddTransactionSheet extends StatefulWidget {
 }
 
 class _AddTransactionSheetState extends State<AddTransactionSheet> {
-  final TextEditingController controller = TextEditingController();
+  final TextEditingController amountController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -307,29 +370,43 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
         children: [
           Text(
             widget.type == "gave"
-                ? "Add You Gave"
-                : "Add You Got",
+                ? "Add Udhar (You Gave)"
+                : "Add Payment (You Got)",
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 16),
+
+          const SizedBox(height: 20),
+
           TextField(
-            controller: controller,
+            controller: amountController,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: "Amount",
+            decoration: InputDecoration(
+              labelText: "Enter Amount",
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              final amount = double.tryParse(controller.text);
-              if (amount == null || amount <= 0) return;
-              Navigator.pop(context, amount);
-            },
-            child: const Text("Save"),
+
+          const SizedBox(height: 18),
+
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: () {
+                double amount =
+                    double.tryParse(amountController.text.trim()) ?? 0;
+
+                if (amount <= 0) return;
+
+                Navigator.pop(context, amount);
+              },
+              child: const Text("Save Transaction"),
+            ),
           ),
         ],
       ),

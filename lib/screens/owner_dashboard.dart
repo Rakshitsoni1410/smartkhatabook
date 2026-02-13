@@ -23,7 +23,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     ProductScreen(),              // 1 Products
     EmployeeScreen(),             // 2 Employees
     WholesalerOrderListScreen(),  // 3 Orders ✅
-    CustomerListScreen(),         // 4 Customers
+    CustomerListScreen(),        // 4 Customers
     LedgerSummaryScreen(),        // 5 Ledger
   ];
 
