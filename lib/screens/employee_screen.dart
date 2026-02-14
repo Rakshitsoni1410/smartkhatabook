@@ -119,7 +119,7 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
                         const Text("Employee Category"),
                         const SizedBox(height: 6),
                         DropdownButtonFormField(
-                          value: category,
+                          initialValue: category,
                           decoration: inputStyle("Select category"),
                           items: [
                             "Cashier",

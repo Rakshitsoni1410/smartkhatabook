@@ -22,7 +22,7 @@ class SmartKhataApp extends StatelessWidget {
         colorScheme: const ColorScheme.light(
           primary: Color(0xFF2563EB),
           secondary: Color(0xFF1D4ED8),
-          background: Color(0xFFF3F4F6),
+          surface: Color(0xFFF3F4F6),
         ),
 
         scaffoldBackgroundColor: const Color(0xFFF3F4F6),

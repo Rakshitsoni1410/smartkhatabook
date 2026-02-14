@@ -111,8 +111,8 @@ class _CustomerDetailPageState extends State<CustomerDetail> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
                       ),
-                      child: const Text("Delete"),
                       onPressed: deleteCustomer,
+                      child: const Text("Delete"),
                     ),
                   ],
                 ),

@@ -230,7 +230,7 @@ class _ProductScreenState extends State<ProductScreen> {
                     SwitchListTile(
                       value: inStock,
                       title: const Text("In Stock"),
-                      activeColor: Colors.green,
+                      activeThumbColor: Colors.green,
                       onChanged: (val) {
                         setModalState(() => inStock = val);
                       },
@@ -241,7 +241,7 @@ class _ProductScreenState extends State<ProductScreen> {
                       value: inWeight,
                       title:
                       const Text("Sell in Weight"),
-                      activeColor: Colors.green,
+                      activeThumbColor: Colors.green,
                       onChanged: (val) {
                         setModalState(() => inWeight = val);
                       },
@@ -251,7 +251,7 @@ class _ProductScreenState extends State<ProductScreen> {
                       const SizedBox(height: 10),
 
                       DropdownButtonFormField<String>(
-                        value: weightUnit,
+                        initialValue: weightUnit,
                         items: weightUnits
                             .map((u) =>
                             DropdownMenuItem(
@@ -335,8 +335,9 @@ class _ProductScreenState extends State<ProductScreen> {
                               categoryError != null ||
                               purchaseError != null ||
                               sellingError != null ||
-                              stockError != null)
+                              stockError != null) {
                             return;
+                          }
 
                           setState(() {
                             products.add({
@@ -395,8 +396,8 @@ class _ProductScreenState extends State<ProductScreen> {
       FloatingActionButton(
         backgroundColor:
         Colors.green.shade700,
-        child: const Icon(Icons.add),
         onPressed: openAddProductForm,
+        child: const Icon(Icons.add),
       ),
       body: Padding(
         padding:
