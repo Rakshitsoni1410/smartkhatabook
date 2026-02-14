@@ -9,8 +9,37 @@ class ProductScreen extends StatefulWidget {
 }
 
 class _ProductScreenState extends State<ProductScreen> {
-  List<Map<String, dynamic>> products = [];
   String searchText = "";
+
+  // ✅ Dummy Products
+  List<Map<String, dynamic>> products = [
+    {
+      "name": "Rice Bag",
+      "category": "Grocery",
+      "description": "Premium basmati rice",
+      "purchase": 800.0,
+      "selling": 950.0,
+      "profit": 150.0,
+      "stockQty": 20,
+      "inStock": true,
+      "inWeight": false,
+      "weightUnit": "kg",
+      "weight": 0.0,
+    },
+    {
+      "name": "Sugar 1kg",
+      "category": "Grocery",
+      "description": "White sugar",
+      "purchase": 40.0,
+      "selling": 45.0,
+      "profit": 5.0,
+      "stockQty": 0,
+      "inStock": false,
+      "inWeight": false,
+      "weightUnit": "kg",
+      "weight": 0.0,
+    }
+  ];
 
   // =========================
   // FILTER PRODUCTS
@@ -42,6 +71,12 @@ class _ProductScreenState extends State<ProductScreen> {
     String weightUnit = "kg";
     double profit = 0;
 
+    String? nameError;
+    String? categoryError;
+    String? purchaseError;
+    String? sellingError;
+    String? stockError;
+
     List<String> weightUnits = [
       "kg",
       "gram",
@@ -52,25 +87,18 @@ class _ProductScreenState extends State<ProductScreen> {
       "dozen"
     ];
 
-    String? nameError;
-    String? categoryError;
-    String? purchaseError;
-    String? sellingError;
-    String? stockError;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             void calcProfit() {
-              double purchase = double.tryParse(purchaseCtrl.text) ?? 0;
-              double selling = double.tryParse(sellingCtrl.text) ?? 0;
+              double purchase =
+                  double.tryParse(purchaseCtrl.text) ?? 0;
+              double selling =
+                  double.tryParse(sellingCtrl.text) ?? 0;
+
               setModalState(() {
                 profit = selling - purchase;
               });
@@ -81,40 +109,50 @@ class _ProductScreenState extends State<ProductScreen> {
                 left: 16,
                 right: 16,
                 top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                bottom:
+                MediaQuery.of(context).viewInsets.bottom + 20,
               ),
               child: SingleChildScrollView(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                  CrossAxisAlignment.start,
                   children: [
+
                     // HEADER
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           "Add New Product",
                           style: TextStyle(
                               fontSize: 18,
-                              fontWeight: FontWeight.bold),
+                              fontWeight:
+                              FontWeight.bold),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
+                          icon:
+                          const Icon(Icons.close),
+                          onPressed: () =>
+                              Navigator.pop(context),
                         )
                       ],
                     ),
 
                     const SizedBox(height: 15),
 
-                    // PRODUCT NAME
+                    // NAME
                     const Text("Product Name *"),
                     const SizedBox(height: 6),
                     TextField(
                       controller: nameCtrl,
                       decoration: InputDecoration(
                         errorText: nameError,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        border:
+                        OutlineInputBorder(
+                          borderRadius:
+                          BorderRadius.circular(
+                              12),
                         ),
                       ),
                     ),
@@ -127,9 +165,13 @@ class _ProductScreenState extends State<ProductScreen> {
                     TextField(
                       controller: categoryCtrl,
                       decoration: InputDecoration(
-                        errorText: categoryError,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        errorText:
+                        categoryError,
+                        border:
+                        OutlineInputBorder(
+                          borderRadius:
+                          BorderRadius.circular(
+                              12),
                         ),
                       ),
                     ),
@@ -142,10 +184,13 @@ class _ProductScreenState extends State<ProductScreen> {
                     TextField(
                       controller: descCtrl,
                       maxLines: 2,
-                      decoration: InputDecoration(
-                        hintText: "Product description...",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                      decoration:
+                      InputDecoration(
+                        border:
+                        OutlineInputBorder(
+                          borderRadius:
+                          BorderRadius.circular(
+                              12),
                         ),
                       ),
                     ),
@@ -157,30 +202,52 @@ class _ProductScreenState extends State<ProductScreen> {
                       children: [
                         Expanded(
                           child: TextField(
-                            controller: purchaseCtrl,
-                            keyboardType: TextInputType.number,
-                            onChanged: (_) => calcProfit(),
-                            decoration: InputDecoration(
-                              labelText: "Purchase ₹",
-                              errorText: purchaseError,
-                              border: OutlineInputBorder(
-                                  borderRadius:
-                                  BorderRadius.circular(12)),
+                            controller:
+                            purchaseCtrl,
+                            keyboardType:
+                            TextInputType
+                                .number,
+                            onChanged: (_) =>
+                                calcProfit(),
+                            decoration:
+                            InputDecoration(
+                              labelText:
+                              "Purchase ₹",
+                              errorText:
+                              purchaseError,
+                              border:
+                              OutlineInputBorder(
+                                borderRadius:
+                                BorderRadius
+                                    .circular(
+                                    12),
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: TextField(
-                            controller: sellingCtrl,
-                            keyboardType: TextInputType.number,
-                            onChanged: (_) => calcProfit(),
-                            decoration: InputDecoration(
-                              labelText: "Selling ₹",
-                              errorText: sellingError,
-                              border: OutlineInputBorder(
-                                  borderRadius:
-                                  BorderRadius.circular(12)),
+                            controller:
+                            sellingCtrl,
+                            keyboardType:
+                            TextInputType
+                                .number,
+                            onChanged: (_) =>
+                                calcProfit(),
+                            decoration:
+                            InputDecoration(
+                              labelText:
+                              "Selling ₹",
+                              errorText:
+                              sellingError,
+                              border:
+                              OutlineInputBorder(
+                                borderRadius:
+                                BorderRadius
+                                    .circular(
+                                    12),
+                              ),
                             ),
                           ),
                         ),
@@ -189,107 +256,111 @@ class _ProductScreenState extends State<ProductScreen> {
 
                     const SizedBox(height: 12),
 
-                    // PROFIT BOX
+                    // PROFIT
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(14),
+                      padding:
+                      const EdgeInsets.all(
+                          14),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.08),
+                        color: Colors.green
+                            .withOpacity(0.1),
                         borderRadius:
-                        BorderRadius.circular(12),
-                        border: Border.all(
-                            color: Colors.green.shade200),
+                        BorderRadius.circular(
+                            12),
                       ),
                       child: Text(
                         "Profit: ₹${profit.toStringAsFixed(2)}",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green.shade700),
+                        style: const TextStyle(
+                            fontWeight:
+                            FontWeight.bold),
                       ),
                     ),
 
                     const SizedBox(height: 14),
 
                     // STOCK
-                    const Text("Stock Quantity *"),
+                    const Text(
+                        "Stock Quantity *"),
                     const SizedBox(height: 6),
                     TextField(
                       controller: stockCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
+                      keyboardType:
+                      TextInputType.number,
+                      decoration:
+                      InputDecoration(
                         errorText: stockError,
-                        border: OutlineInputBorder(
-                            borderRadius:
-                            BorderRadius.circular(12)),
+                        border:
+                        OutlineInputBorder(
+                          borderRadius:
+                          BorderRadius.circular(
+                              12),
+                        ),
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 15),
 
-                    // IN STOCK TOGGLE
+                    // IN STOCK
                     SwitchListTile(
                       value: inStock,
-                      title: const Text("In Stock"),
-                      activeThumbColor: Colors.green,
+                      title:
+                      const Text("In Stock"),
                       onChanged: (val) {
-                        setModalState(() => inStock = val);
+                        setModalState(
+                                () => inStock = val);
                       },
                     ),
 
-                    // SELL IN WEIGHT TOGGLE
+                    // SELL IN WEIGHT
                     SwitchListTile(
                       value: inWeight,
-                      title:
-                      const Text("Sell in Weight"),
-                      activeThumbColor: Colors.green,
+                      title: const Text(
+                          "Sell in Weight"),
                       onChanged: (val) {
-                        setModalState(() => inWeight = val);
+                        setModalState(
+                                () => inWeight = val);
                       },
                     ),
 
                     if (inWeight) ...[
                       const SizedBox(height: 10),
 
-                      DropdownButtonFormField<String>(
-                        initialValue: weightUnit,
+                      DropdownButtonFormField(
+                        initialValue:
+                        weightUnit,
                         items: weightUnits
                             .map((u) =>
                             DropdownMenuItem(
                               value: u,
                               child: Text(
-                                  u.toUpperCase()),
+                                  u),
                             ))
                             .toList(),
                         onChanged: (val) {
-                          setModalState(
-                                  () => weightUnit = val!);
+                          setModalState(() =>
+                          weightUnit =
+                          val!);
                         },
-                        decoration: InputDecoration(
-                          labelText: "Weight Unit",
-                          border: OutlineInputBorder(
-                            borderRadius:
-                            BorderRadius.circular(
-                                12),
-                          ),
+                        decoration:
+                        const InputDecoration(
+                          labelText:
+                          "Weight Unit",
                         ),
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
 
                       TextField(
-                        controller: weightCtrl,
+                        controller:
+                        weightCtrl,
                         keyboardType:
-                        TextInputType.number,
+                        TextInputType
+                            .number,
                         decoration:
-                        InputDecoration(
+                        const InputDecoration(
                           labelText:
                           "Weight per item",
-                          border:
-                          OutlineInputBorder(
-                            borderRadius:
-                            BorderRadius.circular(
-                                12),
-                          ),
                         ),
                       ),
                     ],
@@ -299,61 +370,79 @@ class _ProductScreenState extends State<ProductScreen> {
                     // ADD BUTTON
                     SizedBox(
                       width: double.infinity,
-                      height: 52,
+                      height: 50,
                       child: ElevatedButton(
-                        child:
-                        const Text("Add Product"),
+                        child: const Text(
+                            "Add Product"),
                         onPressed: () {
+
                           setModalState(() {
                             nameError =
-                            nameCtrl.text.isEmpty
+                            nameCtrl
+                                .text
+                                .isEmpty
                                 ? "Required"
                                 : null;
                             categoryError =
-                            categoryCtrl.text
+                            categoryCtrl
+                                .text
                                 .isEmpty
                                 ? "Required"
                                 : null;
                             purchaseError =
-                            purchaseCtrl.text
+                            purchaseCtrl
+                                .text
                                 .isEmpty
                                 ? "Required"
                                 : null;
                             sellingError =
-                            sellingCtrl.text
+                            sellingCtrl
+                                .text
                                 .isEmpty
                                 ? "Required"
                                 : null;
                             stockError =
-                            stockCtrl.text
+                            stockCtrl
+                                .text
                                 .isEmpty
                                 ? "Required"
                                 : null;
                           });
 
-                          if (nameError != null ||
-                              categoryError != null ||
-                              purchaseError != null ||
-                              sellingError != null ||
-                              stockError != null) {
-                            return;
-                          }
+                          if (nameError !=
+                              null ||
+                              categoryError !=
+                                  null ||
+                              purchaseError !=
+                                  null ||
+                              sellingError !=
+                                  null ||
+                              stockError !=
+                                  null) return;
 
                           setState(() {
                             products.add({
                               "name":
                               nameCtrl.text,
                               "category":
-                              categoryCtrl.text,
+                              categoryCtrl
+                                  .text,
                               "description":
                               descCtrl.text,
-                              "purchase": double.parse(
-                                  purchaseCtrl.text),
-                              "selling": double.parse(
-                                  sellingCtrl.text),
-                              "profit": profit,
-                              "stockQty": int.parse(
-                                  stockCtrl.text),
+                              "purchase":
+                              double.parse(
+                                  purchaseCtrl
+                                      .text),
+                              "selling":
+                              double.parse(
+                                  sellingCtrl
+                                      .text),
+                              "profit":
+                              profit,
+                              "stockQty":
+                              int.parse(
+                                  stockCtrl
+                                      .text),
                               "inStock":
                               inStock,
                               "inWeight":
@@ -368,7 +457,8 @@ class _ProductScreenState extends State<ProductScreen> {
                             });
                           });
 
-                          Navigator.pop(context);
+                          Navigator.pop(
+                              context);
                         },
                       ),
                     ),
@@ -383,21 +473,25 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   // =========================
-  // MAIN UI
+  // MAIN SCREEN UI
   // =========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("All Products"),
-        backgroundColor: Colors.green.shade700,
+        title:
+        const Text("All Products"),
+        backgroundColor:
+        Colors.green.shade700,
       ),
       floatingActionButton:
       FloatingActionButton(
+        onPressed:
+        openAddProductForm,
         backgroundColor:
         Colors.green.shade700,
-        onPressed: openAddProductForm,
-        child: const Icon(Icons.add),
+        child:
+        const Icon(Icons.add),
       ),
       body: Padding(
         padding:
@@ -405,33 +499,26 @@ class _ProductScreenState extends State<ProductScreen> {
         child: Column(
           children: [
             TextField(
-              decoration: InputDecoration(
+              decoration:
+              const InputDecoration(
                 hintText:
                 "Search product...",
                 prefixIcon:
-                const Icon(Icons.search),
-                border:
-                OutlineInputBorder(
-                  borderRadius:
-                  BorderRadius.circular(
-                      12),
-                ),
+                Icon(Icons.search),
               ),
               onChanged: (val) {
                 setState(() =>
                 searchText = val);
               },
             ),
-            const SizedBox(
-                height: 15),
+            const SizedBox(height: 15),
             Expanded(
               child:
               filteredProducts.isEmpty
                   ? const Center(
                   child: Text(
                       "No Products Found"))
-                  : ListView
-                  .builder(
+                  : ListView.builder(
                 itemCount:
                 filteredProducts
                     .length,
@@ -441,52 +528,78 @@ class _ProductScreenState extends State<ProductScreen> {
                   filteredProducts[
                   index];
 
-                  return ListTile(
-                    title: Text(
+                  bool outOfStock =
+                      product[
+                      "stockQty"] ==
+                          0 ||
+                          product[
+                          "inStock"] ==
+                              false;
+
+                  return Card(
+                    color: outOfStock
+                        ? Colors
+                        .red.shade50
+                        : Colors
+                        .white,
+                    child: ListTile(
+                      title: Text(
                         product[
-                        "name"]),
-                    subtitle: Text(
-                        "Profit ₹${product["profit"]}"),
-                    trailing: Text(
-                        "₹${product["selling"]}"),
-                    onTap: () {
-                      Navigator
-                          .push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (_) =>
-                              ProductDetails(
-                                product:
-                                product,
-                                userRole:
-                                "Retailer",
-                                onDelete:
-                                    () {
-                                  setState(
-                                          () {
-                                        products
-                                            .remove(
-                                            product);
-                                      });
-                                  Navigator.pop(
-                                      context);
-                                },
-                                onUpdate:
-                                    (updatedProduct) {
-                                  setState(
-                                          () {
-                                        int index =
-                                        products.indexOf(
-                                            product);
-                                        products[index] =
-                                            updatedProduct;
-                                      });
-                                },
-                              ),
+                        "name"],
+                        style:
+                        TextStyle(
+                          color: outOfStock
+                              ? Colors
+                              .red
+                              : Colors
+                              .black,
+                          fontWeight:
+                          FontWeight
+                              .bold,
                         ),
-                      );
-                    },
+                      ),
+                      subtitle:
+                      Text(outOfStock
+                          ? "Out of Stock"
+                          : "Profit ₹${product["profit"]}"),
+                      trailing: Text(
+                          "₹${product["selling"]}"),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (_) =>
+                                ProductDetails(
+                                  product:
+                                  product,
+                                  userRole:
+                                  "Retailer",
+                                  onDelete:
+                                      () {
+                                    setState(
+                                            () {
+                                          products.remove(
+                                              product);
+                                        });
+                                    Navigator.pop(
+                                        context);
+                                  },
+                                  onUpdate:
+                                      (updatedProduct) {
+                                    setState(
+                                            () {
+                                          int i = products.indexOf(
+                                              product);
+                                          products[i] =
+                                              updatedProduct;
+                                        });
+                                  },
+                                ),
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
               ),
