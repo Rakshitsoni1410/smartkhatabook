@@ -36,30 +36,17 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 🔹 LOGO
-                Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [
-                        Theme.of(context).primaryColor,
-                        Theme.of(context).primaryColor.withOpacity(0.7),
-                      ],
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.account_balance_wallet,
-                    color: Colors.white,
-                    size: 45,
-                  ),
+
+                // 🔹 LOGO IMAGE (UPDATED)
+                Image.asset(
+                  "assets/images/logo.png",
+                  height: 100,
                 ),
 
                 const SizedBox(height: 16),
 
                 const Text(
-                  "Smart Khata",
+                  "Smart Khatabook",
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
@@ -75,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 30),
 
-                // 🔹 LOGIN CARD
+                // 🔹 LOGIN CARD (UNCHANGED)
                 Card(
                   elevation: 4,
                   shape: RoundedRectangleBorder(

@@ -11,23 +11,32 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
+
   late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Animation for fade effect
+    // Smooth fade animation
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
+    );
+
+    _fadeAnimation =
+        CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+
+    _controller.forward();
 
     // Navigate after 3 seconds
     Timer(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(
+          builder: (_) => const LoginScreen(),
+        ),
       );
     });
   }
@@ -42,19 +51,22 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2563EB),
-      body: Center(
-        child: FadeTransition(
-          opacity: _controller,
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Icon(
-                Icons.account_balance_wallet_rounded,
-                size: 90,
-                color: Colors.white,
+            children: [
+
+              // ✅ LOGO IMAGE (Put your logo in assets/images/logo.png)
+              Image.asset(
+                "assets/images/logo.png",
+                height: 120,
               ),
-              SizedBox(height: 20),
-              Text(
+
+              const SizedBox(height: 25),
+
+              const Text(
                 "Smart Khatabook",
                 style: TextStyle(
                   fontSize: 28,
@@ -62,10 +74,16 @@ class _SplashScreenState extends State<SplashScreen>
                   color: Colors.white,
                 ),
               ),
-              SizedBox(height: 6),
-              Text(
-                "Business Ledger & Billing System",
-                style: TextStyle(color: Colors.white70),
+
+              const SizedBox(height: 8),
+
+              const Text(
+                "Smart Business. Smart Records.",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white70,
+                  letterSpacing: 1,
+                ),
               ),
             ],
           ),
