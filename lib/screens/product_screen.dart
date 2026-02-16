@@ -482,14 +482,14 @@ class _ProductScreenState extends State<ProductScreen> {
         title:
         const Text("All Products"),
         backgroundColor:
-        Colors.green.shade700,
+        Colors.blue,
       ),
       floatingActionButton:
       FloatingActionButton(
         onPressed:
         openAddProductForm,
         backgroundColor:
-        Colors.green.shade700,
+        Colors.blue,
         child:
         const Icon(Icons.add),
       ),

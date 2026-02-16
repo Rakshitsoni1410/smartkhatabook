@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
   runApp(const SmartKhataApp());
 }
 
@@ -12,7 +11,6 @@ class SmartKhataApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "Smart Khatabook",
       debugShowCheckedModeBanner: false,
 
       theme: ThemeData(
@@ -48,7 +46,7 @@ class SmartKhataApp extends StatelessWidget {
 
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2563EB),
+            backgroundColor: Color(0xFF2563EB),
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
@@ -57,25 +55,22 @@ class SmartKhataApp extends StatelessWidget {
           ),
         ),
 
-        floatingActionButtonTheme:
-        const FloatingActionButtonThemeData(
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
           backgroundColor: Color(0xFF2563EB),
           foregroundColor: Colors.white,
         ),
 
-        bottomNavigationBarTheme:
-        const BottomNavigationBarThemeData(
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
           backgroundColor: Colors.white,
           selectedItemColor: Color(0xFF2563EB),
           unselectedItemColor: Colors.grey,
-          selectedLabelStyle:
-          TextStyle(fontWeight: FontWeight.w600),
+          selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600),
           type: BottomNavigationBarType.fixed,
           elevation: 12,
         ),
       ),
 
-      home: const SplashScreen(),
+      home: SplashScreen(),
     );
   }
 }
