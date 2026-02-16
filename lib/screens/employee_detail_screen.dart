@@ -10,20 +10,19 @@ class EmployeeDetail extends StatefulWidget {
 }
 
 class _EmployeeDetailState extends State<EmployeeDetail> {
-  // ✅ REAL PAYMENT LIST STORED IN STATE
   late List<Map<String, dynamic>> payments;
 
   @override
   void initState() {
     super.initState();
-
-    // ✅ Load payments safely when screen opens
     payments = List<Map<String, dynamic>>.from(
       widget.employee["payments"] ?? [],
     );
   }
 
-  // ✅ TOTAL PAID CALCULATION
+  // ===============================
+  // CALCULATIONS
+  // ===============================
   double get totalPaid {
     return payments.fold(
       0,
@@ -31,12 +30,19 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
     );
   }
 
-  // ==============================
+  double get monthlySalary {
+    return (widget.employee["salary"] ?? 0).toDouble();
+  }
+
+  double get pendingSalary {
+    return monthlySalary - totalPaid;
+  }
+
+  // ===============================
   // PAY SALARY POPUP
-  // ==============================
+  // ===============================
   void paySalaryPopup() {
     TextEditingController amountCtrl = TextEditingController();
-    TextEditingController noteCtrl = TextEditingController();
 
     showModalBottomSheet(
       context: context,
@@ -47,86 +53,75 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
       builder: (_) {
         return Padding(
           padding: EdgeInsets.only(
-            left: 18,
-            right: 18,
+            left: 16,
+            right: 16,
             top: 20,
             bottom: MediaQuery.of(context).viewInsets.bottom + 20,
           ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  "Pay Salary",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 15),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Pay Salary",
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 15),
 
-                // Amount Input
-                TextField(
-                  controller: amountCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: "Amount (₹)",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+              TextField(
+                controller: amountCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: "Amount (₹)",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                const SizedBox(height: 10),
+              ),
 
-                // Note Input
-                TextField(
-                  controller: noteCtrl,
-                  decoration: InputDecoration(
-                    labelText: "Note (Optional)",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
+              const SizedBox(height: 20),
 
-                // Pay Button
-                ElevatedButton(
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade700,
-                    minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text("Pay Salary"),
+                  child: const Text("Confirm Payment"),
                   onPressed: () {
-                    double amt = double.tryParse(amountCtrl.text) ?? 0;
+                    double amt =
+                        double.tryParse(amountCtrl.text) ?? 0;
+
                     if (amt <= 0) return;
 
                     setState(() {
-                      // ✅ Add Payment Properly
                       payments.add({
                         "amount": amt,
-                        "note": noteCtrl.text.trim(),
                         "date": DateTime.now().toString(),
                       });
 
-                      // ✅ Save Back Into Employee Map
                       widget.employee["payments"] = payments;
                     });
 
                     Navigator.pop(context);
                   },
-                )
-              ],
-            ),
+                ),
+              )
+            ],
           ),
         );
       },
     );
   }
 
-  // ==============================
+  // ===============================
   // MAIN UI
-  // ==============================
+  // ===============================
   @override
   Widget build(BuildContext context) {
     final emp = widget.employee;
@@ -136,115 +131,93 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
         title: Text(emp["name"]),
         backgroundColor: Colors.green.shade700,
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ================= INFO CARD =================
+
+            // ================= EMPLOYEE CARD =================
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.grey.shade300),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.shade300,
+                    blurRadius: 6,
+                  )
+                ],
               ),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: Colors.green.shade100,
-                    child: Text(
-                      emp["name"][0].toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
 
+                  // Name
                   Text(
                     emp["name"],
                     style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold),
                   ),
+
+                  const SizedBox(height: 4),
 
                   Text(
                     emp["phone"],
-                    style: const TextStyle(color: Colors.grey),
+                    style:
+                    const TextStyle(color: Colors.grey),
                   ),
+
+                  const SizedBox(height: 10),
+
+                  Text("Salary: ₹$monthlySalary"),
+                  Text(
+                      "Pay Date: ${emp["salaryDate"]} every month"),
 
                   const SizedBox(height: 12),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("Role: ${emp["category"]}"),
-                      Text(
-                        "₹${emp["salary"]}/month",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
+                  // Pending / Paid Status
+                  Text(
+                    pendingSalary <= 0
+                        ? "Salary Fully Paid"
+                        : "Pending: ₹${pendingSalary.toStringAsFixed(0)}",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: pendingSalary <= 0
+                          ? Colors.green
+                          : Colors.red,
+                    ),
                   ),
 
                   const SizedBox(height: 14),
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.call),
-                          label: const Text("Call"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey.shade200,
-                            foregroundColor: Colors.black,
-                          ),
-                          onPressed: () {},
-                        ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                        Colors.green.shade700,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.wallet),
-                          label: const Text("Pay Salary"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade700,
-                          ),
-                          onPressed: paySalaryPopup,
-                        ),
-                      ),
-                    ],
+                      onPressed: paySalaryPopup,
+                      child:
+                      const Text("Pay Salary"),
+                    ),
                   )
                 ],
               ),
             ),
 
-            const SizedBox(height: 16),
-
-            // ================= TOTAL PAID SUMMARY =================
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Text(
-                "Total Paid: ₹${totalPaid.toStringAsFixed(0)}",
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
 
             // ================= PAYMENT HISTORY =================
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                "Salary Payment History",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                "Payment History",
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold),
               ),
             ),
 
@@ -252,30 +225,40 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
 
             Expanded(
               child: payments.isEmpty
-                  ? const Center(child: Text("No salary payments yet"))
+                  ? const Center(
+                child: Text("No payments yet"),
+              )
                   : ListView.builder(
                 itemCount: payments.length,
                 itemBuilder: (_, index) {
                   final p = payments[index];
 
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(14),
+                    margin: const EdgeInsets.only(
+                        bottom: 10),
+                    padding:
+                    const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius:
+                      BorderRadius.circular(14),
+                      border: Border.all(
+                          color:
+                          Colors.grey.shade300),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                      MainAxisAlignment
+                          .spaceBetween,
                       children: [
                         Text(
-                          (p["note"] == null || p["note"].toString().isEmpty)
-                              ? "Salary Paid"
-                              : p["note"],
-                        ),
+                            "₹${p["amount"]}"),
                         Text(
-                          "₹${p["amount"]}",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          p["date"]
+                              .toString()
+                              .split(".")[0],
+                          style: const TextStyle(
+                              color:
+                              Colors.grey),
                         ),
                       ],
                     ),

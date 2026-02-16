@@ -9,11 +9,22 @@ class EmployeeScreen extends StatefulWidget {
 }
 
 class _EmployeeScreenState extends State<EmployeeScreen> {
-  List<Map<String, dynamic>> employees = [];
-
   String searchText = "";
 
-  // ✅ Filter employees
+  // ✅ Dummy Employee for Testing
+  List<Map<String, dynamic>> employees = [
+    {
+      "name": "Rahul Sharma",
+      "phone": "9876543210",
+      "category": "Salesman",
+      "salary": 15000.0,
+      "salaryDate": 5, // salary paid every month on 5th
+      "notes": "",
+      "payments": <Map<String, dynamic>>[],
+    }
+  ];
+
+  // ================= FILTER =================
   List<Map<String, dynamic>> get filteredEmployees {
     return employees.where((emp) {
       return emp["name"]
@@ -23,187 +34,221 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
     }).toList();
   }
 
-  // ✅ Total Salary
   double get totalSalary {
     return employees.fold(
         0, (sum, emp) => sum + (emp["salary"] ?? 0));
   }
 
-  // ==============================
-  // ADD EMPLOYEE FORM
-  // ==============================
-  void openAddEmployeeForm() {
-    TextEditingController nameCtrl = TextEditingController();
-    TextEditingController phoneCtrl = TextEditingController();
-    TextEditingController salaryCtrl = TextEditingController();
-    TextEditingController notesCtrl = TextEditingController();
+  // ================= ADD / EDIT FORM =================
+  void openEmployeeForm({Map<String, dynamic>? employee}) {
+    bool isEdit = employee != null;
 
-    String category = "Salesman";
+    TextEditingController nameCtrl =
+    TextEditingController(text: employee?["name"]);
+    TextEditingController phoneCtrl =
+    TextEditingController(text: employee?["phone"]);
+    TextEditingController salaryCtrl =
+    TextEditingController(
+        text: employee?["salary"]?.toString());
+    TextEditingController notesCtrl =
+    TextEditingController(text: employee?["notes"]);
+
+    String category = employee?["category"] ?? "Salesman";
+    int salaryDate = employee?["salaryDate"] ?? 1;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent, // ✅ Important
       builder: (_) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return AnimatedPadding(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOut,
-
-              // ✅ Keyboard Padding Fix
+            return Padding(
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 16,
+                right: 16,
+                top: 20,
+                bottom:
+                MediaQuery.of(context).viewInsets.bottom + 20,
               ),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment:
+                  CrossAxisAlignment.start,
+                  children: [
 
-              child: SafeArea(
-                child: Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(22),
+                    Text(
+                      isEdit
+                          ? "Edit Employee"
+                          : "Add Employee",
+                      style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight:
+                          FontWeight.bold),
                     ),
-                  ),
 
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                    const SizedBox(height: 15),
 
-                        // ✅ Header
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              "Add Employee",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () => Navigator.pop(context),
-                            )
-                          ],
-                        ),
+                    TextField(
+                      controller: nameCtrl,
+                      decoration:
+                      const InputDecoration(
+                        labelText: "Name",
+                      ),
+                    ),
 
-                        const SizedBox(height: 15),
+                    const SizedBox(height: 10),
 
-                        // ✅ Name
-                        const Text("Employee Name *"),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: nameCtrl,
-                          decoration: inputStyle("Enter name"),
-                        ),
+                    TextField(
+                      controller: phoneCtrl,
+                      keyboardType:
+                      TextInputType.phone,
+                      decoration:
+                      const InputDecoration(
+                        labelText: "Phone",
+                      ),
+                    ),
 
-                        const SizedBox(height: 12),
+                    const SizedBox(height: 10),
 
-                        // ✅ Phone
-                        const Text("Phone Number *"),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: phoneCtrl,
-                          keyboardType: TextInputType.phone,
-                          maxLength: 10,
-                          decoration: inputStyle("Enter phone number"),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // ✅ Category Dropdown
-                        const Text("Employee Category"),
-                        const SizedBox(height: 6),
-                        DropdownButtonFormField(
-                          initialValue: category,
-                          decoration: inputStyle("Select category"),
-                          items: [
-                            "Cashier",
-                            "Salesman",
-                            "Delivery Boy",
-                            "Manager",
-                            "Other"
-                          ]
-                              .map((c) => DropdownMenuItem(
+                    DropdownButtonFormField(
+                      value: category,
+                      items: [
+                        "Cashier",
+                        "Salesman",
+                        "Delivery Boy",
+                        "Manager",
+                        "Other"
+                      ]
+                          .map((c) =>
+                          DropdownMenuItem(
                             value: c,
                             child: Text(c),
                           ))
-                              .toList(),
-                          onChanged: (val) {
-                            setModalState(() {
-                              category = val!;
-                            });
-                          },
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // ✅ Salary
-                        const Text("Monthly Salary (₹)"),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: salaryCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: inputStyle("Enter salary"),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // ✅ Notes
-                        const Text("Notes (Optional)"),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: notesCtrl,
-                          maxLines: 2,
-                          decoration: inputStyle("Extra details"),
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // ✅ Save Button (Always Visible)
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.shade700,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: const Text(
-                              "Save Employee",
-                              style: TextStyle(fontSize: 16),
-                            ),
-                            onPressed: () {
-                              if (nameCtrl.text.trim().isEmpty) return;
-
-                              setState(() {
-                                employees.add({
-                                  "date": DateTime.now().toString(),
-                                  "name": nameCtrl.text.trim(),
-                                  "phone": phoneCtrl.text.trim(),
-                                  "category": category,
-                                  "salary":
-                                  double.tryParse(salaryCtrl.text) ?? 0,
-                                  "notes": notesCtrl.text.trim(),
-                                  "payments": <Map<String, dynamic>>[],
-                                });
-                              });
-
-                              Navigator.pop(context);
-                            },
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-                      ],
+                          .toList(),
+                      onChanged: (val) {
+                        setModalState(
+                                () => category = val!);
+                      },
+                      decoration:
+                      const InputDecoration(
+                        labelText: "Category",
+                      ),
                     ),
-                  ),
+
+                    const SizedBox(height: 10),
+
+                    TextField(
+                      controller: salaryCtrl,
+                      keyboardType:
+                      TextInputType.number,
+                      decoration:
+                      const InputDecoration(
+                        labelText: "Monthly Salary",
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // ✅ Salary Date Picker
+                    DropdownButtonFormField<int>(
+                      value: salaryDate,
+                      items: List.generate(
+                        31,
+                            (index) =>
+                            DropdownMenuItem(
+                              value: index + 1,
+                              child:
+                              Text("${index + 1}"),
+                            ),
+                      ),
+                      onChanged: (val) {
+                        setModalState(
+                                () => salaryDate = val!);
+                      },
+                      decoration:
+                      const InputDecoration(
+                        labelText:
+                        "Salary Pay Date (Day of Month)",
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    TextField(
+                      controller: notesCtrl,
+                      decoration:
+                      const InputDecoration(
+                        labelText: "Notes",
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    ElevatedButton(
+                      style: ElevatedButton
+                          .styleFrom(
+                        minimumSize:
+                        const Size(
+                            double.infinity,
+                            50),
+                        backgroundColor:
+                        Colors.green,
+                      ),
+                      child: Text(isEdit
+                          ? "Update"
+                          : "Save"),
+                      onPressed: () {
+                        if (nameCtrl.text
+                            .trim()
+                            .isEmpty) return;
+
+                        if (isEdit) {
+                          setState(() {
+                            employee["name"] =
+                                nameCtrl.text;
+                            employee["phone"] =
+                                phoneCtrl.text;
+                            employee["category"] =
+                                category;
+                            employee["salary"] =
+                                double.tryParse(
+                                    salaryCtrl
+                                        .text) ??
+                                    0;
+                            employee["salaryDate"] =
+                                salaryDate;
+                            employee["notes"] =
+                                notesCtrl.text;
+                          });
+                        } else {
+                          setState(() {
+                            employees.add({
+                              "name":
+                              nameCtrl.text,
+                              "phone":
+                              phoneCtrl.text,
+                              "category":
+                              category,
+                              "salary":
+                              double.tryParse(
+                                  salaryCtrl
+                                      .text) ??
+                                  0,
+                              "salaryDate":
+                              salaryDate,
+                              "notes":
+                              notesCtrl.text,
+                              "payments":
+                              <Map<String,
+                                  dynamic>>[],
+                            });
+                          });
+                        }
+
+                        Navigator.pop(context);
+                      },
+                    )
+                  ],
                 ),
               ),
             );
@@ -213,183 +258,146 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
     );
   }
 
-  // ==============================
-  // UI INPUT STYLE
-  // ==============================
-  InputDecoration inputStyle(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-    );
-  }
-
-  // ==============================
-  // MAIN UI
-  // ==============================
+  // ================= MAIN UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Employees"),
-        backgroundColor: Colors.green.shade700,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Center(
-              child: Text("${employees.length} employees"),
-            ),
-          )
-        ],
+        backgroundColor: Colors.green,
       ),
-
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.green.shade700,
-        onPressed: openAddEmployeeForm,
+      floatingActionButton:
+      FloatingActionButton(
+        backgroundColor: Colors.green,
+        onPressed: () =>
+            openEmployeeForm(),
         child: const Icon(Icons.add),
       ),
-
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding:
+        const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Summary Card
+
+            // Salary Summary
             Container(
-              padding: const EdgeInsets.all(16),
+              padding:
+              const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.grey.shade300),
+                borderRadius:
+                BorderRadius.circular(16),
+                border: Border.all(
+                    color: Colors.grey),
               ),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Colors.green.shade100,
-                    child: const Icon(Icons.people,
-                        color: Colors.green),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Total Monthly Salary",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                      Text(
-                        "₹${totalSalary.toStringAsFixed(0)}",
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    ],
+                  const Icon(Icons.people),
+                  const SizedBox(width: 10),
+                  Text(
+                    "Total Salary: ₹${totalSalary.toStringAsFixed(0)}",
+                    style: const TextStyle(
+                        fontWeight:
+                        FontWeight.bold),
                   )
                 ],
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 15),
 
-            // Search Bar
             TextField(
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
-                hintText: "Search by name or phone...",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+              decoration:
+              const InputDecoration(
+                hintText:
+                "Search employee...",
+                prefixIcon:
+                Icon(Icons.search),
               ),
               onChanged: (val) {
-                setState(() => searchText = val);
+                setState(() =>
+                searchText = val);
               },
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 15),
 
-            // Employee List
             Expanded(
-              child: filteredEmployees.isEmpty
+              child:
+              filteredEmployees.isEmpty
                   ? const Center(
-                child: Text("No employees found"),
-              )
+                  child: Text(
+                      "No employees"))
                   : ListView.builder(
-                itemCount: filteredEmployees.length,
-                itemBuilder: (context, index) {
-                  final emp = filteredEmployees[index];
+                itemCount:
+                filteredEmployees
+                    .length,
+                itemBuilder:
+                    (_, index) {
+                  final emp =
+                  filteredEmployees[
+                  index];
 
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              EmployeeDetail(employee: emp),
-                        ),
-                      );
-                    },
-                    child: employeeCard(emp),
+                  return Card(
+                    child:
+                    ListTile(
+                      title: Text(
+                          emp[
+                          "name"]),
+                      subtitle: Text(
+                          "₹${emp["salary"]} | Pay on ${emp["salaryDate"]}"),
+                      trailing:
+                      PopupMenuButton(
+                        itemBuilder:
+                            (_) => [
+                          const PopupMenuItem(
+                            value:
+                            "edit",
+                            child: Text(
+                                "Edit"),
+                          ),
+                          const PopupMenuItem(
+                            value:
+                            "delete",
+                            child: Text(
+                                "Delete"),
+                          ),
+                        ],
+                        onSelected:
+                            (val) {
+                          if (val ==
+                              "edit") {
+                            openEmployeeForm(
+                                employee:
+                                emp);
+                          } else {
+                            setState(
+                                    () {
+                                  employees.remove(
+                                      emp);
+                                });
+                          }
+                        },
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (_) =>
+                                EmployeeDetail(
+                                  employee:
+                                  emp,
+                                ),
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
               ),
             )
           ],
         ),
-      ),
-    );
-  }
-
-  // ==============================
-  // EMPLOYEE CARD
-  // ==============================
-  Widget employeeCard(Map<String, dynamic> emp) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: Colors.green.shade100,
-            child: Text(
-              emp["name"][0].toUpperCase(),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  emp["name"],
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  emp["phone"],
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-
-          Text(
-            "₹${emp["salary"]}",
-            style: const TextStyle(
-                fontWeight: FontWeight.bold),
-          ),
-        ],
       ),
     );
   }
