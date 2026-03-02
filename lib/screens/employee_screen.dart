@@ -192,7 +192,7 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
                             double.infinity,
                             50),
                         backgroundColor:
-                        Colors.green,
+                        Colors.blueAccent,
                       ),
                       child: Text(isEdit
                           ? "Update"
@@ -264,11 +264,11 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Employees"),
-        backgroundColor: Colors.green,
+        backgroundColor: Colors.blue,
       ),
       floatingActionButton:
       FloatingActionButton(
-        backgroundColor: Colors.green,
+        backgroundColor: Colors.blue,
         onPressed: () =>
             openEmployeeForm(),
         child: const Icon(Icons.add),
