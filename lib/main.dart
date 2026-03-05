@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  debugPrint('Environment variables loaded: ${dotenv.env['BASE_URL']}');
   runApp(const SmartKhataApp());
 }
 

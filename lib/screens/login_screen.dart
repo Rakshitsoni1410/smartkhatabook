@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'owner_dashboard.dart';
 import 'signup_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,14 +17,32 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  void _login() {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _login() async {
+    final base = dotenv.env['BASE_URL'] ?? '';
+    final uri = Uri.parse('$base');
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const OwnerDashboard()),
-    );
+    try {
+      final resp = await http
+          .get(uri, headers: {'Content-Type': 'application/json'})
+          .timeout(const Duration(seconds: 20));
+
+      debugPrint('Login response: ${resp.statusCode} - ${resp.body}');
+    } catch (e) {
+      debugPrint('Login error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Login failed. Please try again.")),
+      );
+    }
   }
+
+  // void _login() {
+  //   if (!_formKey.currentState!.validate()) return;
+
+  //   Navigator.pushReplacement(
+  //     context,
+  //     MaterialPageRoute(builder: (_) => const OwnerDashboard()),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -36,21 +56,14 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-
                 // 🔹 LOGO IMAGE (UPDATED)
-                Image.asset(
-                  "assets/images/logo.png",
-                  height: 100,
-                ),
+                Image.asset("assets/images/logo.png", height: 100),
 
                 const SizedBox(height: 16),
 
                 const Text(
                   "Smart Khatabook",
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                 ),
 
                 const SizedBox(height: 6),
@@ -104,9 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             prefixIcon: Icon(Icons.lock),
                           ),
                           validator: (v) =>
-                          v == null || v.isEmpty
-                              ? "Enter password"
-                              : null,
+                              v == null || v.isEmpty ? "Enter password" : null,
                         ),
 
                         const SizedBox(height: 24),
