@@ -38,6 +38,7 @@ This project is developed as a **Mini Project for MCA Semester 2**.
 ## 🛠️ Technology Stack
 
 - **Frontend:** Flutter (Dart)
+- **backend:** mongodb https://github.com/Rakshitsoni1410/backend-of-smartkhata-book
 - **Platform:** Android
 - **UI Framework:** Material Design
 - **State Management:** Basic Stateful & Stateless Widgets
