@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'owner_dashboard.dart';
 import 'signup_screen.dart';
@@ -18,15 +21,43 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
     final base = dotenv.env['BASE_URL'] ?? '';
-    final uri = Uri.parse('$base');
+    final uri = Uri.parse('$base/user/login');
 
     try {
       final resp = await http
-          .get(uri, headers: {'Content-Type': 'application/json'})
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'phone': _phoneController.text.trim(),
+              'password': _passwordController.text.trim(),
+            }),
+          )
           .timeout(const Duration(seconds: 20));
 
       debugPrint('Login response: ${resp.statusCode} - ${resp.body}');
+
+      if (resp.statusCode == 200) {
+        // Navigate to dashboard on success
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const OwnerDashboard()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login failed: ${resp.body}')),
+        );
+      }
+    } on TimeoutException catch (e) {
+      debugPrint('Login timeout: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                "Server is not responding (timeout). Please check your connection or server URL.")),
+      );
     } catch (e) {
       debugPrint('Login error: $e');
       ScaffoldMessenger.of(context).showSnackBar(

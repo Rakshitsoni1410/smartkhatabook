@@ -1,6 +1,9 @@
-import 'dart:io';
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -14,212 +17,495 @@ class _SignupScreenState extends State<SignupScreen> {
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _shopController = TextEditingController();
   final _addressController = TextEditingController();
 
   String _role = "Retailer";
+  String? _businessType;
 
-  File? _logoFile;
-  final ImagePicker _picker = ImagePicker();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
-  // Pick Image
-  Future<void> _pickLogo() async {
-    final XFile? image =
-    await _picker.pickImage(source: ImageSource.gallery);
+  final List<String> _businessTypes = [
+    "Stationery",
+    "Grocery",
+    "Medical",
+    "Clothing",
+    "Electronics",
+    "Footwear",
+    "Jewelry",
+    "Hardware",
+    "Furniture",
+    "Cosmetic",
+    "Book Store",
+    "Mobile Shop",
+    "Bakery",
+    "Restaurant",
+    "Gift Shop",
+    "General Store",
+    "Sports Shop",
+    "Toy Shop",
+    "Agriculture",
+    "Other",
+  ];
 
-    if (image != null) {
-      setState(() {
-        _logoFile = File(image.path);
-      });
+  void _showMessage(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        backgroundColor: isError ? Colors.red.shade600 : Colors.green.shade600,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final base = dotenv.env['BASE_URL'] ?? '';
+
+    if (base.isEmpty) {
+      _showMessage("BASE_URL is missing in .env file", isError: true);
+      return;
+    }
+
+    final uri = Uri.parse('$base/user/register');
+
+    setState(() => _isLoading = true);
+
+    try {
+      final resp = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'name': _nameController.text.trim(),
+              'phone': _phoneController.text.trim(),
+              'role': _role,
+              'email': _emailController.text.trim(),
+              'shopName': _role == 'Customer' ? '' : _shopController.text.trim(),
+              'businessType': _role == 'Customer' ? '' : (_businessType ?? ''),
+              'address': _addressController.text.trim(),
+              'password': _passwordController.text.trim(),
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      final data = jsonDecode(resp.body);
+
+      if (resp.statusCode == 200 || resp.statusCode == 201) {
+        _showMessage(data['message'] ?? "Registration successful");
+        await Future.delayed(const Duration(milliseconds: 700));
+        if (mounted) Navigator.pop(context);
+      } else {
+        _showMessage(
+          data['message'] ?? "Registration failed",
+          isError: true,
+        );
+      }
+    } on TimeoutException {
+      _showMessage(
+        "Server timeout. Please check your connection.",
+        isError: true,
+      );
+    } catch (e) {
+      _showMessage(
+        "Something went wrong. Please try again.",
+        isError: true,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  void _register() {
-    if (!_formKey.currentState!.validate()) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Registration successful")),
+  InputDecoration _inputDecoration({
+    required String label,
+    required IconData icon,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: Colors.grey.shade50,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Colors.deepPurple, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
     );
+  }
 
-    Navigator.pop(context);
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _shopController.dispose();
+    _addressController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isCustomer = _role == "Customer";
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Sign Up")),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
+      backgroundColor: const Color(0xfff5f7fb),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(18),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
 
-              // NAME
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: "Full Name",
-                  prefixIcon: Icon(Icons.person),
-                ),
-                validator: (v) =>
-                v == null || v.isEmpty ? "Enter name" : null,
-              ),
-
-              const SizedBox(height: 10),
-
-              // MOBILE
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                maxLength: 10,
-                decoration: const InputDecoration(
-                  labelText: "Mobile Number",
-                  prefixIcon: Icon(Icons.phone),
-                  counterText: "",
-                ),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return "Enter mobile number";
-                  if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) {
-                    return "Enter valid 10-digit number";
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              // ROLE
-              DropdownButtonFormField(
-                initialValue: _role,
-                decoration: const InputDecoration(
-                  labelText: "User Role",
-                  prefixIcon: Icon(Icons.business),
-                ),
-                items: const [
-                  DropdownMenuItem(
-                      value: "Wholesaler", child: Text("Wholesaler")),
-                  DropdownMenuItem(
-                      value: "Retailer", child: Text("Retailer")),
-                  DropdownMenuItem(
-                      value: "Customer", child: Text("Customer")),
-                ],
-                onChanged: (v) => setState(() => _role = v!),
-              ),
-
-              const SizedBox(height: 10),
-
-              // SHOP NAME (not for customer)
-              if (_role != "Customer") ...[
-                TextFormField(
-                  controller: _shopController,
-                  decoration: const InputDecoration(
-                    labelText: "Shop / Business Name",
-                    prefixIcon: Icon(Icons.store),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
                   ),
-                  validator: (v) =>
-                  v == null || v.isEmpty ? "Enter shop name" : null,
                 ),
 
-                const SizedBox(height: 15),
+                const SizedBox(height: 8),
 
-                // LOGO UPLOAD
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Shop Logo (Optional)",
-                      style: TextStyle(fontWeight: FontWeight.w500),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xff6D5DF6),
+                        Color(0xff8E7CFF),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    const SizedBox(height: 8),
-
-                    GestureDetector(
-                      onTap: _pickLogo,
-                      child: Container(
-                        height: 120,
-                        width: 120,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: _logoFile == null
-                            ? const Center(
-                          child: Icon(Icons.add_a_photo, size: 35),
-                        )
-                            : ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(
-                            _logoFile!,
-                            fit: BoxFit.cover,
-                          ),
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Create Account",
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 8),
+                      Text(
+                        "Register your profile and start managing your business easily.",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
 
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
+
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: _inputDecoration(
+                          label: "Full Name",
+                          icon: Icons.person_outline,
+                        ),
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? "Enter name" : null,
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        maxLength: 10,
+                        decoration: _inputDecoration(
+                          label: "Mobile Number",
+                          icon: Icons.phone_outlined,
+                        ).copyWith(counterText: ""),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return "Enter mobile number";
+                          }
+                          if (!RegExp(r'^[0-9]{10}$').hasMatch(v.trim())) {
+                            return "Enter valid 10-digit number";
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      TextFormField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: _inputDecoration(
+                          label: "Email Address",
+                          icon: Icons.email_outlined,
+                        ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return "Enter email";
+                          }
+                          if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                              .hasMatch(v.trim())) {
+                            return "Enter a valid email";
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      DropdownButtonFormField<String>(
+                        value: _role,
+                        decoration: _inputDecoration(
+                          label: "User Role",
+                          icon: Icons.business_center_outlined,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                        items: const [
+                          DropdownMenuItem(
+                            value: "Wholesaler",
+                            child: Text("Wholesaler"),
+                          ),
+                          DropdownMenuItem(
+                            value: "Retailer",
+                            child: Text("Retailer"),
+                          ),
+                          DropdownMenuItem(
+                            value: "Customer",
+                            child: Text("Customer"),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          setState(() {
+                            _role = v!;
+                            if (_role == "Customer") {
+                              _businessType = null;
+                              _shopController.clear();
+                            }
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      if (!isCustomer) ...[
+                        TextFormField(
+                          controller: _shopController,
+                          decoration: _inputDecoration(
+                            label: "Shop / Business Name",
+                            icon: Icons.storefront_outlined,
+                          ),
+                          validator: (v) {
+                            if (!isCustomer && (v == null || v.trim().isEmpty)) {
+                              return "Enter shop name";
+                            }
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        DropdownButtonFormField<String>(
+                          value: _businessType,
+                          decoration: _inputDecoration(
+                            label: "Business Type",
+                            icon: Icons.category_outlined,
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                          items: _businessTypes
+                              .map(
+                                (type) => DropdownMenuItem<String>(
+                                  value: type,
+                                  child: Text(type),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _businessType = value;
+                            });
+                          },
+                          validator: (value) {
+                            if (!isCustomer &&
+                                (value == null || value.isEmpty)) {
+                              return "Select business type";
+                            }
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 14),
+                      ],
+
+                      TextFormField(
+                        controller: _addressController,
+                        maxLines: 2,
+                        decoration: _inputDecoration(
+                          label: "Address",
+                          icon: Icons.location_on_outlined,
+                        ),
+                        validator: (v) => v == null || v.trim().isEmpty
+                            ? "Enter address"
+                            : null,
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        decoration: _inputDecoration(
+                          label: "Password",
+                          icon: Icons.lock_outline,
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                          ),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.trim().length < 6) {
+                            return "Password must be at least 6 characters";
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        obscureText: _obscureConfirmPassword,
+                        decoration: _inputDecoration(
+                          label: "Confirm Password",
+                          icon: Icons.lock_outline,
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirmPassword =
+                                    !_obscureConfirmPassword;
+                              });
+                            },
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                          ),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) {
+                            return "Confirm your password";
+                          }
+                          if (v != _passwordController.text) {
+                            return "Passwords do not match";
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _register,
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            backgroundColor: const Color(0xff6D5DF6),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  "Create Account",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
               ],
-
-              // ADDRESS
-              TextFormField(
-                controller: _addressController,
-                decoration: const InputDecoration(
-                  labelText: "Address",
-                  prefixIcon: Icon(Icons.location_on),
-                ),
-                validator: (v) =>
-                v == null || v.isEmpty ? "Enter address" : null,
-              ),
-
-              const SizedBox(height: 10),
-
-              // PASSWORD
-              TextFormField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: "Password",
-                  prefixIcon: Icon(Icons.lock),
-                ),
-                validator: (v) {
-                  if (v == null || v.length < 6) {
-                    return "Password must be at least 6 characters";
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              // CONFIRM PASSWORD
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: "Confirm Password",
-                  prefixIcon: Icon(Icons.lock_outline),
-                ),
-                validator: (v) {
-                  if (v != _passwordController.text) {
-                    return "Passwords do not match";
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 24),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _register,
-                  child: const Text("Create Account"),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
