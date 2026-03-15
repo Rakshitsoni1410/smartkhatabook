@@ -32,12 +32,12 @@ class _LoginScreenState extends State<LoginScreen> {
           message,
           style: const TextStyle(fontWeight: FontWeight.w500),
         ),
-        backgroundColor: isError ? Colors.red.shade600 : const Color(0xff2EA3F2),
+        backgroundColor: isError
+            ? Colors.red.shade600
+            : const Color(0xff2EA3F2),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -79,25 +79,18 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const OwnerDashboard()),
+            MaterialPageRoute(
+              builder: (_) => OwnerDashboard(userId: data["user"]["_id"]),
+            ),
           );
         }
       } else {
-        _showMessage(
-          data['message'] ?? "Login failed",
-          isError: true,
-        );
+        _showMessage(data['message'] ?? "Login failed", isError: true);
       }
     } on TimeoutException {
-      _showMessage(
-        "Server not responding. Please try again.",
-        isError: true,
-      );
+      _showMessage("Server not responding. Please try again.", isError: true);
     } catch (_) {
-      _showMessage(
-        "Login failed. Please try again.",
-        isError: true,
-      );
+      _showMessage("Login failed. Please try again.", isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -111,13 +104,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(
-        color: isDark ? Colors.white70 : Colors.black54,
-      ),
-      prefixIcon: Icon(
-        icon,
-        color: const Color(0xff2EA3F2),
-      ),
+      labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+      prefixIcon: Icon(icon, color: const Color(0xff2EA3F2)),
       suffixIcon: suffixIcon,
       counterText: "",
       filled: true,
@@ -125,28 +113,19 @@ class _LoginScreenState extends State<LoginScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(
-          color: isDark ? Colors.white12 : Colors.black12,
-        ),
+        borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(
-          color: isDark ? Colors.white12 : Colors.black12,
-        ),
+        borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Color(0xff2EA3F2),
-          width: 1.5,
-        ),
+        borderSide: const BorderSide(color: Color(0xff2EA3F2), width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Colors.red,
-        ),
+        borderSide: const BorderSide(color: Colors.red),
       ),
     );
   }
@@ -164,11 +143,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final bgColor = isDark ? const Color(0xff0D1117) : const Color(0xffF4F7FB);
     final cardColor = isDark ? const Color(0xff161B22) : Colors.white;
-    final titleColor = isDark ? const Color(0xff2EA3F2) : const Color(0xff1565C0);
+    final titleColor = isDark
+        ? const Color(0xff2EA3F2)
+        : const Color(0xff1565C0);
     final subtitleColor = isDark ? Colors.white60 : Colors.black54;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final borderColor =
-        isDark ? const Color(0xff2EA3F2).withOpacity(.20) : const Color(0xff2EA3F2).withOpacity(.12);
+    final borderColor = isDark
+        ? const Color(0xff2EA3F2).withOpacity(.20)
+        : const Color(0xff2EA3F2).withOpacity(.12);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -182,10 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: Column(
                   children: [
-                    Image.asset(
-                      "assets/images/logo.png",
-                      height: 150,
-                    ),
+                    Image.asset("assets/images/logo.png", height: 150),
 
                     const SizedBox(height: 12),
 
@@ -299,12 +278,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                   _obscurePassword
                                       ? Icons.visibility_off_outlined
                                       : Icons.visibility_outlined,
-                                  color: isDark ? Colors.white70 : Colors.black54,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black54,
                                 ),
                               ),
                             ),
-                            validator: (v) =>
-                                v == null || v.trim().isEmpty ? "Enter password" : null,
+                            validator: (v) => v == null || v.trim().isEmpty
+                                ? "Enter password"
+                                : null,
                           ),
 
                           const SizedBox(height: 26),

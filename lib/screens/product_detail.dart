@@ -19,7 +19,6 @@ class ProductDetails extends StatefulWidget {
 }
 
 class _ProductDetailsState extends State<ProductDetails> {
-
   double getNumber(dynamic value) {
     if (value == null) return 0;
     if (value is int) return value.toDouble();
@@ -32,18 +31,19 @@ class _ProductDetailsState extends State<ProductDetails> {
     return "₹${getNumber(amount).toStringAsFixed(2)}";
   }
 
-  // ================= EDIT PRODUCT =================
   void editProduct() {
     TextEditingController nameCtrl =
-    TextEditingController(text: widget.product["name"]);
+        TextEditingController(text: widget.product["name"] ?? "");
     TextEditingController categoryCtrl =
-    TextEditingController(text: widget.product["category"]);
+        TextEditingController(text: widget.product["category"] ?? "");
+    TextEditingController descCtrl =
+        TextEditingController(text: widget.product["description"] ?? "");
     TextEditingController purchaseCtrl =
-    TextEditingController(text: widget.product["purchase"].toString());
+        TextEditingController(text: widget.product["purchase"].toString());
     TextEditingController sellingCtrl =
-    TextEditingController(text: widget.product["selling"].toString());
+        TextEditingController(text: widget.product["selling"].toString());
     TextEditingController stockCtrl =
-    TextEditingController(text: widget.product["stockQty"].toString());
+        TextEditingController(text: widget.product["stockQty"].toString());
 
     showModalBottomSheet(
       context: context,
@@ -59,16 +59,11 @@ class _ProductDetailsState extends State<ProductDetails> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-
                 const Text(
                   "Edit Product",
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-
                 const SizedBox(height: 15),
-
                 TextField(
                   controller: nameCtrl,
                   decoration: const InputDecoration(
@@ -76,9 +71,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 TextField(
                   controller: categoryCtrl,
                   decoration: const InputDecoration(
@@ -86,9 +79,15 @@ class _ProductDetailsState extends State<ProductDetails> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
+                TextField(
+                  controller: descCtrl,
+                  decoration: const InputDecoration(
+                    labelText: "Description",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 TextField(
                   controller: purchaseCtrl,
                   keyboardType: TextInputType.number,
@@ -97,9 +96,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 TextField(
                   controller: sellingCtrl,
                   keyboardType: TextInputType.number,
@@ -108,9 +105,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 TextField(
                   controller: stockCtrl,
                   keyboardType: TextInputType.number,
@@ -119,22 +114,23 @@ class _ProductDetailsState extends State<ProductDetails> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
                 ElevatedButton(
                   onPressed: () {
+                    final purchase = double.tryParse(purchaseCtrl.text) ?? 0;
+                    final selling = double.tryParse(sellingCtrl.text) ?? 0;
+                    final stock = int.tryParse(stockCtrl.text) ?? 0;
+
                     Map<String, dynamic> updatedProduct = {
                       ...widget.product,
                       "name": nameCtrl.text,
                       "category": categoryCtrl.text,
-                      "purchase": double.parse(purchaseCtrl.text),
-                      "selling": double.parse(sellingCtrl.text),
-                      "profit": double.parse(sellingCtrl.text) -
-                          double.parse(purchaseCtrl.text),
-                      "stockQty": int.parse(stockCtrl.text),
-                      "inStock":
-                      int.parse(stockCtrl.text) > 0,
+                      "description": descCtrl.text,
+                      "purchase": purchase,
+                      "selling": selling,
+                      "profit": selling - purchase,
+                      "stockQty": stock,
+                      "inStock": stock > 0,
                     };
 
                     widget.onUpdate(updatedProduct);
@@ -151,18 +147,17 @@ class _ProductDetailsState extends State<ProductDetails> {
     );
   }
 
-  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
 
     double purchase = getNumber(product["purchase"]);
     double selling = getNumber(product["selling"]);
-    double profit = selling - purchase;
+    double profit = getNumber(product["profit"]);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(product["name"]),
+        title: Text(product["name"] ?? "Product"),
         backgroundColor: Colors.green.shade700,
         actions: [
           IconButton(
@@ -175,18 +170,15 @@ class _ProductDetailsState extends State<ProductDetails> {
           ),
         ],
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius:
-                BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.grey.shade300,
@@ -195,59 +187,47 @@ class _ProductDetailsState extends State<ProductDetails> {
                 ],
               ),
               child: Column(
-                crossAxisAlignment:
-                CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   Text(
-                    product["name"],
+                    product["name"] ?? "",
                     style: const TextStyle(
                       fontSize: 20,
-                      fontWeight:
-                      FontWeight.bold,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 10),
-
-                  Text("Category: ${product["category"]}"),
-
+                  Text("Category: ${product["category"] ?? ""}"),
+                  const SizedBox(height: 10),
+                  Text("Description: ${product["description"] ?? ""}"),
                   const SizedBox(height: 15),
-
                   Text("Purchase: ${formatCurrency(purchase)}"),
                   Text("Selling: ${formatCurrency(selling)}"),
                   Text(
                     "Profit: ${formatCurrency(profit)}",
                     style: const TextStyle(
-                        color: Colors.green,
-                        fontWeight:
-                        FontWeight.bold),
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-
                   const SizedBox(height: 15),
-
-                  Text("Stock: ${product["stockQty"]}"),
-
+                  Text("Stock: ${product["stockQty"] ?? 0}"),
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
             if (widget.userRole == "Retailer")
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(
+                    ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text(
-                              "Order sent to wholesaler")),
+                        content: Text("Order sent to wholesaler"),
+                      ),
                     );
                   },
-                  child:
-                  const Text("Order from Wholesaler"),
+                  child: const Text("Order from Wholesaler"),
                 ),
               ),
           ],

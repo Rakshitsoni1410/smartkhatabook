@@ -5,10 +5,15 @@ import 'product_screen.dart';
 import 'employee_screen.dart';
 import 'customer_list_screen.dart';
 import 'ledger_summary_screen.dart';
-import 'wholesaler_order_list_screen.dart'; // ✅ NEW
+import 'wholesaler_order_list_screen.dart';
 
 class OwnerDashboard extends StatefulWidget {
-  const OwnerDashboard({super.key});
+  final String userId;
+
+  const OwnerDashboard({
+    super.key,
+    required this.userId,
+  });
 
   @override
   State<OwnerDashboard> createState() => _OwnerDashboardState();
@@ -17,15 +22,21 @@ class OwnerDashboard extends StatefulWidget {
 class _OwnerDashboardState extends State<OwnerDashboard> {
   int _index = 0;
 
-  // 🔑 ORDER MUST MATCH bottom nav order
-  final pages = const [
-    DashboardHomeScreen(),        // 0 Overview
-    ProductScreen(),              // 1 Products
-    EmployeeScreen(),             // 2 Employees
-    WholesalerOrderListScreen(),  // 3 Orders ✅
-    CustomerListScreen(),        // 4 Customers
-    LedgerSummaryScreen(),        // 5 Ledger
-  ];
+  late final List<Widget> pages;
+
+  @override
+  void initState() {
+    super.initState();
+
+    pages = [
+      const DashboardHomeScreen(),                 // 0 Overview
+      ProductScreen(userId: widget.userId),       // 1 Products
+      const EmployeeScreen(),                     // 2 Employees
+      const WholesalerOrderListScreen(),          // 3 Orders
+      const CustomerListScreen(),                 // 4 Customers
+      const LedgerSummaryScreen(),                // 5 Ledger
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +45,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
         title: const Text("Owner Dashboard"),
       ),
       body: pages[_index],
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         onTap: (value) {
@@ -56,13 +66,10 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             icon: Icon(Icons.group),
             label: "Employees",
           ),
-
-          // ✅ NEW ORDERS TAB
           BottomNavigationBarItem(
             icon: Icon(Icons.local_shipping),
             label: "Orders",
           ),
-
           BottomNavigationBarItem(
             icon: Icon(Icons.people),
             label: "Customers",
