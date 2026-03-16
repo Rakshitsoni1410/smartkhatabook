@@ -27,123 +27,391 @@ class _ProductDetailsState extends State<ProductDetails> {
     return 0;
   }
 
+  int getInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  String getText(dynamic value) {
+    return value?.toString() ?? "";
+  }
+
   String formatCurrency(dynamic amount) {
     return "₹${getNumber(amount).toStringAsFixed(2)}";
   }
 
+  IconData getCategoryIcon(String category) {
+    final c = category.toLowerCase();
+
+    if (c.contains("grocery")) return Icons.shopping_basket_outlined;
+    if (c.contains("stationery")) return Icons.edit_note_outlined;
+    if (c.contains("medical")) return Icons.local_hospital_outlined;
+    if (c.contains("electronics")) return Icons.devices_other_outlined;
+    if (c.contains("clothing")) return Icons.checkroom_outlined;
+    if (c.contains("footwear")) return Icons.hiking_outlined;
+    if (c.contains("jewelry")) return Icons.diamond_outlined;
+    if (c.contains("furniture")) return Icons.chair_outlined;
+    if (c.contains("book")) return Icons.menu_book_outlined;
+    if (c.contains("mobile")) return Icons.smartphone_outlined;
+    if (c.contains("bakery")) return Icons.bakery_dining_outlined;
+    if (c.contains("restaurant")) return Icons.restaurant_outlined;
+
+    return Icons.inventory_2_outlined;
+  }
+
+  Color getStockColor(int stockQty, bool inStock) {
+    if (!inStock || stockQty <= 0) return Colors.red;
+    if (stockQty <= 5) return Colors.orange;
+    return Colors.green;
+  }
+
+  String getStockLabel(int stockQty, bool inStock) {
+    if (!inStock || stockQty <= 0) return "Out of Stock";
+    if (stockQty <= 5) return "Low Stock";
+    return "In Stock";
+  }
+
   void editProduct() {
+    final product = widget.product;
+
     TextEditingController nameCtrl =
-        TextEditingController(text: widget.product["name"] ?? "");
+        TextEditingController(text: getText(product["name"]));
     TextEditingController categoryCtrl =
-        TextEditingController(text: widget.product["category"] ?? "");
+        TextEditingController(text: getText(product["category"]));
     TextEditingController descCtrl =
-        TextEditingController(text: widget.product["description"] ?? "");
+        TextEditingController(text: getText(product["description"]));
     TextEditingController purchaseCtrl =
-        TextEditingController(text: widget.product["purchase"].toString());
+        TextEditingController(text: getNumber(product["purchase"]).toString());
     TextEditingController sellingCtrl =
-        TextEditingController(text: widget.product["selling"].toString());
+        TextEditingController(text: getNumber(product["selling"]).toString());
     TextEditingController stockCtrl =
-        TextEditingController(text: widget.product["stockQty"].toString());
+        TextEditingController(text: getInt(product["stockQty"]).toString());
+    TextEditingController weightCtrl =
+        TextEditingController(text: getNumber(product["weight"]).toString());
+
+    bool inWeight = product["inWeight"] == true;
+    String weightUnit =
+        getText(product["weightUnit"]).isEmpty ? "piece" : getText(product["weightUnit"]);
+    double profit =
+        getNumber(product["selling"]) - getNumber(product["purchase"]);
+
+    final List<String> weightUnits = [
+      "kg",
+      "gram",
+      "liter",
+      "ml",
+      "piece",
+      "pack",
+      "dozen",
+      "strip",
+    ];
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: SingleChildScrollView(
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            void calcProfit() {
+              final purchase = double.tryParse(purchaseCtrl.text) ?? 0;
+              final selling = double.tryParse(sellingCtrl.text) ?? 0;
+
+              setModalState(() {
+                profit = selling - purchase;
+              });
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Edit Product",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: InputDecoration(
+                        labelText: "Product Name",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    TextField(
+                      controller: categoryCtrl,
+                      decoration: InputDecoration(
+                        labelText: "Category",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    TextField(
+                      controller: descCtrl,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        labelText: "Description",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: purchaseCtrl,
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) => calcProfit(),
+                            decoration: InputDecoration(
+                              labelText: "Purchase ₹",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: sellingCtrl,
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) => calcProfit(),
+                            decoration: InputDecoration(
+                              labelText: "Selling ₹",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        "Profit: ₹${profit.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    TextField(
+                      controller: stockCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: "Stock Quantity",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    SwitchListTile(
+                      value: inWeight,
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("Sell in Weight"),
+                      onChanged: (val) {
+                        setModalState(() {
+                          inWeight = val;
+                        });
+                      },
+                    ),
+
+                    if (inWeight) ...[
+                      DropdownButtonFormField<String>(
+                        value: weightUnit,
+                        items: weightUnits
+                            .map(
+                              (u) => DropdownMenuItem(
+                                value: u,
+                                child: Text(u),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          setModalState(() {
+                            weightUnit = val!;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          labelText: "Weight Unit",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: weightCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: "Weight per item",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 20),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final purchase = double.tryParse(purchaseCtrl.text) ?? 0;
+                          final selling = double.tryParse(sellingCtrl.text) ?? 0;
+                          final stock = int.tryParse(stockCtrl.text) ?? 0;
+
+                          final updatedProduct = {
+                            ...widget.product,
+                            "name": nameCtrl.text.trim(),
+                            "category": categoryCtrl.text.trim(),
+                            "description": descCtrl.text.trim(),
+                            "purchase": purchase,
+                            "selling": selling,
+                            "profit": selling - purchase,
+                            "stockQty": stock,
+                            "inStock": stock > 0,
+                            "inWeight": inWeight,
+                            "weightUnit": weightUnit,
+                            "weight": double.tryParse(weightCtrl.text) ?? 0,
+                          };
+
+                          widget.onUpdate(updatedProduct);
+                          Navigator.pop(context);
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xff6D5DF6),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text("Update Product"),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget infoCard({
+    required String title,
+    required String value,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 10),
+          Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Edit Product",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 15),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: "Product Name",
-                    border: OutlineInputBorder(),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: color,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: categoryCtrl,
-                  decoration: const InputDecoration(
-                    labelText: "Category",
-                    border: OutlineInputBorder(),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: descCtrl,
-                  decoration: const InputDecoration(
-                    labelText: "Description",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: purchaseCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: "Purchase ₹",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: sellingCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: "Selling ₹",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: stockCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: "Stock Quantity",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    final purchase = double.tryParse(purchaseCtrl.text) ?? 0;
-                    final selling = double.tryParse(sellingCtrl.text) ?? 0;
-                    final stock = int.tryParse(stockCtrl.text) ?? 0;
-
-                    Map<String, dynamic> updatedProduct = {
-                      ...widget.product,
-                      "name": nameCtrl.text,
-                      "category": categoryCtrl.text,
-                      "description": descCtrl.text,
-                      "purchase": purchase,
-                      "selling": selling,
-                      "profit": selling - purchase,
-                      "stockQty": stock,
-                      "inStock": stock > 0,
-                    };
-
-                    widget.onUpdate(updatedProduct);
-                    Navigator.pop(context);
-                    Navigator.pop(context);
-                  },
-                  child: const Text("Update Product"),
                 ),
               ],
             ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget detailRow(String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+              ),
+            ),
           ),
-        );
-      },
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: valueColor ?? Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -151,75 +419,301 @@ class _ProductDetailsState extends State<ProductDetails> {
   Widget build(BuildContext context) {
     final product = widget.product;
 
-    double purchase = getNumber(product["purchase"]);
-    double selling = getNumber(product["selling"]);
-    double profit = getNumber(product["profit"]);
+    final String name = getText(product["name"]);
+    final String category = getText(product["category"]);
+    final String description = getText(product["description"]);
+    final double purchase = getNumber(product["purchase"]);
+    final double selling = getNumber(product["selling"]);
+    final double profit = getNumber(product["profit"]);
+    final int stockQty = getInt(product["stockQty"]);
+    final bool inStock = product["inStock"] == true;
+    final bool inWeight = product["inWeight"] == true;
+    final String weightUnit = getText(product["weightUnit"]);
+    final double weight = getNumber(product["weight"]);
+
+    final Color stockColor = getStockColor(stockQty, inStock);
+    final String stockLabel = getStockLabel(stockQty, inStock);
+    final bool lowStock = stockQty > 0 && stockQty <= 5 && inStock;
 
     return Scaffold(
+      backgroundColor: const Color(0xffF5F7FB),
       appBar: AppBar(
-        title: Text(product["name"] ?? "Product"),
-        backgroundColor: Colors.green.shade700,
+        title: Text(name.isEmpty ? "Product Details" : name),
+        backgroundColor: const Color(0xff6D5DF6),
+        foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
+            icon: const Icon(Icons.edit_outlined),
             onPressed: editProduct,
           ),
           IconButton(
-            icon: const Icon(Icons.delete),
+            icon: const Icon(Icons.delete_outline),
             onPressed: widget.onDelete,
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            // TOP HERO CARD
             Container(
-              padding: const EdgeInsets.all(16),
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xff6D5DF6),
+                    const Color(0xff8E7CFF),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(22),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.shade300,
-                    blurRadius: 6,
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 72,
+                    width: 72,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Icon(
+                      getCategoryIcon(category),
+                      size: 34,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: Text(
+                                category.isEmpty ? "General" : category,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: stockColor.withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: Text(
+                                stockLabel,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: stockColor == Colors.green
+                                      ? Colors.white
+                                      : stockColor,
+                                ),
+                              ),
+                            ),
+                            if (inWeight)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.18),
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                child: Text(
+                                  "$weight $weightUnit",
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
                   )
+                ],
+              ),
+            ),
+
+            if (lowStock) ...[
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.orange.withOpacity(0.20),
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "Low stock alert: this product has 5 or fewer items left.",
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 18),
+
+            // STATS
+            Row(
+              children: [
+                Expanded(
+                  child: infoCard(
+                    title: "Purchase",
+                    value: formatCurrency(purchase),
+                    color: const Color(0xffFB8C00),
+                    icon: Icons.shopping_cart_checkout_outlined,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: infoCard(
+                    title: "Selling",
+                    value: formatCurrency(selling),
+                    color: const Color(0xff1E88E5),
+                    icon: Icons.sell_outlined,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            Row(
+              children: [
+                Expanded(
+                  child: infoCard(
+                    title: "Profit",
+                    value: formatCurrency(profit),
+                    color: const Color(0xff2E7D32),
+                    icon: Icons.trending_up_outlined,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: infoCard(
+                    title: "Stock",
+                    value: "$stockQty",
+                    color: stockColor,
+                    icon: Icons.inventory_2_outlined,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 18),
+
+            // DETAILS CARD
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
                 ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    product["name"] ?? "",
-                    style: const TextStyle(
-                      fontSize: 20,
+                  const Text(
+                    "Product Details",
+                    style: TextStyle(
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text("Category: ${product["category"] ?? ""}"),
-                  const SizedBox(height: 10),
-                  Text("Description: ${product["description"] ?? ""}"),
-                  const SizedBox(height: 15),
-                  Text("Purchase: ${formatCurrency(purchase)}"),
-                  Text("Selling: ${formatCurrency(selling)}"),
-                  Text(
-                    "Profit: ${formatCurrency(profit)}",
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  const SizedBox(height: 16),
+                  detailRow("Name", name),
+                  detailRow("Category", category.isEmpty ? "General" : category),
+                  detailRow(
+                    "Description",
+                    description.isEmpty ? "No description added" : description,
                   ),
-                  const SizedBox(height: 15),
-                  Text("Stock: ${product["stockQty"] ?? 0}"),
+                  detailRow(
+                    "Stock Status",
+                    stockLabel,
+                    valueColor: stockColor,
+                  ),
+                  detailRow("Stock Qty", "$stockQty"),
+                  detailRow("Sell in Weight", inWeight ? "Yes" : "No"),
+                  if (inWeight) ...[
+                    detailRow("Weight Unit", weightUnit),
+                    detailRow("Weight", weight.toString()),
+                  ],
                 ],
               ),
             ),
+
             const SizedBox(height: 20),
+
             if (widget.userRole == "Retailer")
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                height: 52,
+                child: ElevatedButton.icon(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -227,7 +721,20 @@ class _ProductDetailsState extends State<ProductDetails> {
                       ),
                     );
                   },
-                  child: const Text("Order from Wholesaler"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff6D5DF6),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  icon: const Icon(Icons.local_shipping_outlined),
+                  label: const Text(
+                    "Order from Wholesaler",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
           ],
