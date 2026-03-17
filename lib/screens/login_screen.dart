@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+import '../models/user_role.dart';
 import 'owner_dashboard.dart';
 import 'signup_screen.dart';
 
@@ -32,12 +33,13 @@ class _LoginScreenState extends State<LoginScreen> {
           message,
           style: const TextStyle(fontWeight: FontWeight.w500),
         ),
-        backgroundColor: isError
-            ? Colors.red.shade600
-            : const Color(0xff2EA3F2),
+        backgroundColor:
+            isError ? Colors.red.shade600 : const Color(0xff2EA3F2),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -75,33 +77,48 @@ class _LoginScreenState extends State<LoginScreen> {
         _showMessage(data['message'] ?? "Login successful");
 
         final user = data['user'];
+
         final userId = user?['_id']?.toString() ?? '';
         final userName = user?['name']?.toString() ?? '';
+        final shopName = user?['shopName']?.toString() ?? '';
+        final businessType = user?['businessType']?.toString() ?? '';
+        final roleValue = user?['role'];
 
         if (userId.isEmpty) {
           _showMessage("User details missing in login response", isError: true);
           return;
         }
 
+        late final UserRole parsedRole;
+        try {
+          parsedRole = parseUserRole(roleValue);
+        } catch (e) {
+          _showMessage("Invalid user role: $roleValue", isError: true);
+          return;
+        }
+
         await Future.delayed(const Duration(milliseconds: 600));
 
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => OwnerDashboard(
-                userId: userId,
-                userName: userName,
-              ),
+        if (!mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OwnerDashboard(
+              userId: userId,
+              userName: userName,
+              shopName: shopName,
+              businessType: businessType,
+              userRole: parsedRole,
             ),
-          );
-        }
+          ),
+        );
       } else {
         _showMessage(data['message'] ?? "Login failed", isError: true);
       }
     } on TimeoutException {
       _showMessage("Server not responding. Please try again.", isError: true);
-    } catch (_) {
+    } catch (e) {
       _showMessage("Login failed. Please try again.", isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -125,15 +142,22 @@ class _LoginScreenState extends State<LoginScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+        borderSide: BorderSide(
+          color: isDark ? Colors.white12 : Colors.black12,
+        ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+        borderSide: BorderSide(
+          color: isDark ? Colors.white12 : Colors.black12,
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xff2EA3F2), width: 1.5),
+        borderSide: const BorderSide(
+          color: Color(0xff2EA3F2),
+          width: 1.5,
+        ),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -155,9 +179,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final bgColor = isDark ? const Color(0xff0D1117) : const Color(0xffF4F7FB);
     final cardColor = isDark ? const Color(0xff161B22) : Colors.white;
-    final titleColor = isDark
-        ? const Color(0xff2EA3F2)
-        : const Color(0xff1565C0);
+    final titleColor =
+        isDark ? const Color(0xff2EA3F2) : const Color(0xff1565C0);
     final subtitleColor = isDark ? Colors.white60 : Colors.black54;
     final textColor = isDark ? Colors.white : Colors.black87;
     final borderColor = isDark
@@ -177,9 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   children: [
                     Image.asset("assets/images/logo.png", height: 150),
-
                     const SizedBox(height: 12),
-
                     Text(
                       "SMART KHATABOOK",
                       textAlign: TextAlign.center,
@@ -190,9 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         letterSpacing: 1.2,
                       ),
                     ),
-
                     const SizedBox(height: 6),
-
                     Text(
                       "Track. Manage. Profit.",
                       style: TextStyle(
@@ -201,9 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-
                     const SizedBox(height: 34),
-
                     Container(
                       padding: const EdgeInsets.all(22),
                       decoration: BoxDecoration(
@@ -233,9 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 6),
-
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
@@ -246,9 +261,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 22),
-
                           TextFormField(
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
@@ -269,9 +282,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               return null;
                             },
                           ),
-
                           const SizedBox(height: 16),
-
                           TextFormField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
@@ -300,9 +311,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ? "Enter password"
                                 : null,
                           ),
-
                           const SizedBox(height: 26),
-
                           SizedBox(
                             width: double.infinity,
                             height: 54,
@@ -334,9 +343,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                             ),
                           ),
-
                           const SizedBox(height: 18),
-
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -366,7 +373,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 20),
                   ],
                 ),

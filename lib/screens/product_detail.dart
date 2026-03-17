@@ -84,24 +84,25 @@ class _ProductDetailsState extends State<ProductDetails> {
   void editProduct() {
     final product = widget.product;
 
-    TextEditingController nameCtrl =
+    final TextEditingController nameCtrl =
         TextEditingController(text: getText(product["name"]));
-    TextEditingController categoryCtrl =
+    final TextEditingController categoryCtrl =
         TextEditingController(text: getText(product["category"]));
-    TextEditingController descCtrl =
+    final TextEditingController descCtrl =
         TextEditingController(text: getText(product["description"]));
-    TextEditingController purchaseCtrl =
+    final TextEditingController purchaseCtrl =
         TextEditingController(text: getNumber(product["purchase"]).toString());
-    TextEditingController sellingCtrl =
+    final TextEditingController sellingCtrl =
         TextEditingController(text: getNumber(product["selling"]).toString());
-    TextEditingController stockCtrl =
+    final TextEditingController stockCtrl =
         TextEditingController(text: getInt(product["stockQty"]).toString());
-    TextEditingController weightCtrl =
+    final TextEditingController weightCtrl =
         TextEditingController(text: getNumber(product["weight"]).toString());
 
     bool inWeight = product["inWeight"] == true;
-    String weightUnit =
-        getText(product["weightUnit"]).isEmpty ? "piece" : getText(product["weightUnit"]);
+    String weightUnit = getText(product["weightUnit"]).isEmpty
+        ? "piece"
+        : getText(product["weightUnit"]);
     double profit =
         getNumber(product["selling"]) - getNumber(product["purchase"]);
 
@@ -119,9 +120,9 @@ class _ProductDetailsState extends State<ProductDetails> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) {
+      builder: (sheetContext) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (sheetContext, setModalState) {
             void calcProfit() {
               final purchase = double.tryParse(purchaseCtrl.text) ?? 0;
               final selling = double.tryParse(sellingCtrl.text) ?? 0;
@@ -136,7 +137,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                 left: 16,
                 right: 16,
                 top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -150,7 +151,6 @@ class _ProductDetailsState extends State<ProductDetails> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     TextField(
                       controller: nameCtrl,
                       decoration: InputDecoration(
@@ -161,7 +161,6 @@ class _ProductDetailsState extends State<ProductDetails> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
                     TextField(
                       controller: categoryCtrl,
                       decoration: InputDecoration(
@@ -172,7 +171,6 @@ class _ProductDetailsState extends State<ProductDetails> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
                     TextField(
                       controller: descCtrl,
                       maxLines: 2,
@@ -184,13 +182,14 @@ class _ProductDetailsState extends State<ProductDetails> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
                     Row(
                       children: [
                         Expanded(
                           child: TextField(
                             controller: purchaseCtrl,
-                            keyboardType: TextInputType.number,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             onChanged: (_) => calcProfit(),
                             decoration: InputDecoration(
                               labelText: "Purchase ₹",
@@ -204,7 +203,9 @@ class _ProductDetailsState extends State<ProductDetails> {
                         Expanded(
                           child: TextField(
                             controller: sellingCtrl,
-                            keyboardType: TextInputType.number,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             onChanged: (_) => calcProfit(),
                             decoration: InputDecoration(
                               labelText: "Selling ₹",
@@ -216,9 +217,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 12),
-
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(14),
@@ -234,9 +233,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     TextField(
                       controller: stockCtrl,
                       keyboardType: TextInputType.number,
@@ -247,9 +244,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     SwitchListTile(
                       value: inWeight,
                       contentPadding: EdgeInsets.zero,
@@ -260,7 +255,6 @@ class _ProductDetailsState extends State<ProductDetails> {
                         });
                       },
                     ),
-
                     if (inWeight) ...[
                       DropdownButtonFormField<String>(
                         value: weightUnit,
@@ -287,7 +281,9 @@ class _ProductDetailsState extends State<ProductDetails> {
                       const SizedBox(height: 12),
                       TextField(
                         controller: weightCtrl,
-                        keyboardType: TextInputType.number,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: "Weight per item",
                           border: OutlineInputBorder(
@@ -296,16 +292,16 @@ class _ProductDetailsState extends State<ProductDetails> {
                         ),
                       ),
                     ],
-
                     const SizedBox(height: 20),
-
                     SizedBox(
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
                         onPressed: () {
-                          final purchase = double.tryParse(purchaseCtrl.text) ?? 0;
-                          final selling = double.tryParse(sellingCtrl.text) ?? 0;
+                          final purchase =
+                              double.tryParse(purchaseCtrl.text) ?? 0;
+                          final selling =
+                              double.tryParse(sellingCtrl.text) ?? 0;
                           final stock = int.tryParse(stockCtrl.text) ?? 0;
 
                           final updatedProduct = {
@@ -324,8 +320,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                           };
 
                           widget.onUpdate(updatedProduct);
-                          Navigator.pop(context);
-                          Navigator.pop(context);
+                          Navigator.pop(sheetContext);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xff6D5DF6),
@@ -344,14 +339,23 @@ class _ProductDetailsState extends State<ProductDetails> {
           },
         );
       },
-    );
+    ).whenComplete(() {
+      nameCtrl.dispose();
+      categoryCtrl.dispose();
+      descCtrl.dispose();
+      purchaseCtrl.dispose();
+      sellingCtrl.dispose();
+      stockCtrl.dispose();
+      weightCtrl.dispose();
+    });
   }
 
   void openWholesalerOrderForm() {
     final product = widget.product;
     final bool inWeight = product["inWeight"] == true;
-    final String unitLabel =
-        getText(product["weightUnit"]).isEmpty ? "piece" : getText(product["weightUnit"]);
+    final String unitLabel = getText(product["weightUnit"]).isEmpty
+        ? "piece"
+        : getText(product["weightUnit"]);
     final double purchasePrice = getNumber(product["purchase"]);
     final double sellingPrice = getNumber(product["selling"]);
     final double defaultPrice = purchasePrice > 0 ? purchasePrice : sellingPrice;
@@ -420,9 +424,8 @@ class _ProductDetailsState extends State<ProductDetails> {
                       ),
                       onChanged: (_) => updateTotal(),
                       decoration: InputDecoration(
-                        labelText: inWeight
-                            ? "Quantity ($unitLabel)"
-                            : "Quantity",
+                        labelText:
+                            inWeight ? "Quantity ($unitLabel)" : "Quantity",
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -496,6 +499,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                           }
 
                           Navigator.pop(sheetContext);
+
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
@@ -505,6 +509,16 @@ class _ProductDetailsState extends State<ProductDetails> {
                               ),
                             ),
                           );
+
+                          debugPrint({
+                            "productId": product["id"],
+                            "productName": getText(product["name"]),
+                            "quantity": orderQuantity,
+                            "pricePerUnit": orderPrice,
+                            "unit": inWeight ? unitLabel : "item",
+                            "total": orderQuantity * orderPrice,
+                            "status": "pending",
+                          }.toString());
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xff6D5DF6),
@@ -608,6 +622,10 @@ class _ProductDetailsState extends State<ProductDetails> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
+    final normalizedRole = widget.userRole.trim().toLowerCase();
+    final canManageProduct =
+        normalizedRole == 'wholesaler' || normalizedRole == 'retailer';
+    final canPlaceOrder = normalizedRole == 'retailer';
 
     final String name = getText(product["name"]);
     final String category = getText(product["category"]);
@@ -632,30 +650,31 @@ class _ProductDetailsState extends State<ProductDetails> {
         backgroundColor: const Color(0xff6D5DF6),
         foregroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: editProduct,
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: widget.onDelete,
-          ),
-        ],
+        actions: canManageProduct
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: editProduct,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: widget.onDelete,
+                ),
+              ]
+            : null,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // TOP HERO CARD
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
+                gradient: const LinearGradient(
                   colors: [
-                    const Color(0xff6D5DF6),
-                    const Color(0xff8E7CFF),
+                    Color(0xff6D5DF6),
+                    Color(0xff8E7CFF),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -752,7 +771,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                                   borderRadius: BorderRadius.circular(30),
                                 ),
                                 child: Text(
-                                  "$weight $weightUnit",
+                                  "${formatQuantity(weight)} $weightUnit",
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -768,7 +787,6 @@ class _ProductDetailsState extends State<ProductDetails> {
                 ],
               ),
             ),
-
             if (lowStock) ...[
               const SizedBox(height: 14),
               Container(
@@ -798,10 +816,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                 ),
               ),
             ],
-
             const SizedBox(height: 18),
-
-            // STATS
             Row(
               children: [
                 Expanded(
@@ -823,9 +838,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                 ),
               ],
             ),
-
             const SizedBox(height: 10),
-
             Row(
               children: [
                 Expanded(
@@ -847,10 +860,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                 ),
               ],
             ),
-
             const SizedBox(height: 18),
-
-            // DETAILS CARD
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(18),
@@ -891,15 +901,13 @@ class _ProductDetailsState extends State<ProductDetails> {
                   detailRow("Sell in Weight", inWeight ? "Yes" : "No"),
                   if (inWeight) ...[
                     detailRow("Weight Unit", weightUnit),
-                    detailRow("Weight", weight.toString()),
+                    detailRow("Weight", formatQuantity(weight)),
                   ],
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
-            if (widget.userRole == "Retailer")
+            if (canPlaceOrder)
               SizedBox(
                 width: double.infinity,
                 height: 52,

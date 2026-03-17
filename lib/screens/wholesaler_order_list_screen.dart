@@ -4,7 +4,12 @@ import 'wholesaler_order_status_screen.dart';
 enum OrderStatus { ordered, onTheWay, onHold, delivered, cancelled }
 
 class WholesalerOrderListScreen extends StatefulWidget {
-  const WholesalerOrderListScreen({super.key});
+  final String title;
+
+  const WholesalerOrderListScreen({
+    super.key,
+    this.title = 'Orders',
+  });
 
   @override
   State<WholesalerOrderListScreen> createState() =>
@@ -72,7 +77,7 @@ class _WholesalerOrderListScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Orders"),
+        title: Text(widget.title),
         actions: [
           DropdownButton<String>(
             value: _filter,

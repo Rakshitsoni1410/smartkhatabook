@@ -2,14 +2,18 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+
+import '../models/user_role.dart';
 import 'product_detail.dart';
 
 class ProductScreen extends StatefulWidget {
   final String userId;
+  final UserRole userRole;
 
   const ProductScreen({
     super.key,
     required this.userId,
+    required this.userRole,
   });
 
   @override
@@ -607,6 +611,8 @@ class _ProductScreenState extends State<ProductScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canManageStock = widget.userRole != UserRole.customer;
+
     if (isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -615,14 +621,16 @@ class _ProductScreenState extends State<ProductScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("All Products"),
+        title: const Text("Stock"),
         backgroundColor: Colors.blue,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: openAddProductForm,
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: canManageStock
+          ? FloatingActionButton(
+              onPressed: openAddProductForm,
+              backgroundColor: Colors.blue,
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: Padding(
         padding: const EdgeInsets.all(15),
         child: Column(
@@ -668,7 +676,7 @@ class _ProductScreenState extends State<ProductScreen> {
                               MaterialPageRoute(
                                 builder: (_) => ProductDetails(
                                   product: product,
-                                  userRole: "Retailer",
+                                  userRole: widget.userRole.label,
                                   onDelete: () async {
                                     await deleteProductApi(product["_id"]);
                                     if (mounted) Navigator.pop(context);
