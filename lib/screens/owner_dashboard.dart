@@ -9,10 +9,12 @@ import 'wholesaler_order_list_screen.dart';
 
 class OwnerDashboard extends StatefulWidget {
   final String userId;
+  final String userName;
 
   const OwnerDashboard({
     super.key,
     required this.userId,
+    this.userName = '',
   });
 
   @override
@@ -29,7 +31,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     super.initState();
 
     pages = [
-      const DashboardHomeScreen(),                 // 0 Overview
+      DashboardHomeScreen(userName: widget.userName), // 0 Overview
       ProductScreen(userId: widget.userId),       // 1 Products
       const EmployeeScreen(),                     // 2 Employees
       const WholesalerOrderListScreen(),          // 3 Orders

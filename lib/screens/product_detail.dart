@@ -43,6 +43,13 @@ class _ProductDetailsState extends State<ProductDetails> {
     return "₹${getNumber(amount).toStringAsFixed(2)}";
   }
 
+  String formatQuantity(double value) {
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toStringAsFixed(2);
+  }
+
   IconData getCategoryIcon(String category) {
     final c = category.toLowerCase();
 
@@ -338,6 +345,189 @@ class _ProductDetailsState extends State<ProductDetails> {
         );
       },
     );
+  }
+
+  void openWholesalerOrderForm() {
+    final product = widget.product;
+    final bool inWeight = product["inWeight"] == true;
+    final String unitLabel =
+        getText(product["weightUnit"]).isEmpty ? "piece" : getText(product["weightUnit"]);
+    final double purchasePrice = getNumber(product["purchase"]);
+    final double sellingPrice = getNumber(product["selling"]);
+    final double defaultPrice = purchasePrice > 0 ? purchasePrice : sellingPrice;
+
+    final quantityCtrl = TextEditingController(text: "1");
+    final priceCtrl = TextEditingController(
+      text: defaultPrice > 0 ? formatQuantity(defaultPrice) : "",
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        double quantity = double.tryParse(quantityCtrl.text) ?? 0;
+        double price = double.tryParse(priceCtrl.text) ?? 0;
+        double total = quantity * price;
+
+        return StatefulBuilder(
+          builder: (sheetContext, setModalState) {
+            void updateTotal() {
+              final parsedQuantity = double.tryParse(quantityCtrl.text) ?? 0;
+              final parsedPrice = double.tryParse(priceCtrl.text) ?? 0;
+
+              setModalState(() {
+                quantity = parsedQuantity;
+                price = parsedPrice;
+                total = parsedQuantity * parsedPrice;
+              });
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 20,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Wholesaler Order",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      getText(product["name"]).isEmpty
+                          ? "Create a new order"
+                          : getText(product["name"]),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: quantityCtrl,
+                      keyboardType: TextInputType.numberWithOptions(
+                        decimal: inWeight,
+                      ),
+                      onChanged: (_) => updateTotal(),
+                      decoration: InputDecoration(
+                        labelText: inWeight
+                            ? "Quantity ($unitLabel)"
+                            : "Quantity",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: priceCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      onChanged: (_) => updateTotal(),
+                      decoration: InputDecoration(
+                        labelText: inWeight
+                            ? "Price per $unitLabel"
+                            : "Price per item",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xff6D5DF6).withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Order Summary",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xff6D5DF6),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            "Total Amount: ${formatCurrency(total)}",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          final orderQuantity =
+                              double.tryParse(quantityCtrl.text.trim()) ?? 0;
+                          final orderPrice =
+                              double.tryParse(priceCtrl.text.trim()) ?? 0;
+
+                          if (orderQuantity <= 0 || orderPrice <= 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Enter a valid quantity and price",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          Navigator.pop(sheetContext);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "Order sent for ${formatQuantity(orderQuantity)} "
+                                "${inWeight ? unitLabel : "items"} at "
+                                "${formatCurrency(orderPrice)} each",
+                              ),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xff6D5DF6),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: const Icon(Icons.local_shipping_outlined),
+                        label: const Text("Send Order"),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      quantityCtrl.dispose();
+      priceCtrl.dispose();
+    });
   }
 
   Widget infoCard({
@@ -714,13 +904,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Order sent to wholesaler"),
-                      ),
-                    );
-                  },
+                  onPressed: openWholesalerOrderForm,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xff6D5DF6),
                     foregroundColor: Colors.white,

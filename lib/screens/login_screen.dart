@@ -74,13 +74,25 @@ class _LoginScreenState extends State<LoginScreen> {
       if (resp.statusCode == 200) {
         _showMessage(data['message'] ?? "Login successful");
 
+        final user = data['user'];
+        final userId = user?['_id']?.toString() ?? '';
+        final userName = user?['name']?.toString() ?? '';
+
+        if (userId.isEmpty) {
+          _showMessage("User details missing in login response", isError: true);
+          return;
+        }
+
         await Future.delayed(const Duration(milliseconds: 600));
 
         if (mounted) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (_) => OwnerDashboard(userId: data["user"]["_id"]),
+              builder: (_) => OwnerDashboard(
+                userId: userId,
+                userName: userName,
+              ),
             ),
           );
         }
