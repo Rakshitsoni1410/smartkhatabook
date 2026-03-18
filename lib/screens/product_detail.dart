@@ -1,8 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
 class ProductDetails extends StatefulWidget {
   final Map<String, dynamic> product;
   final String userRole;
+  final String userId;
+  final String userName;
+  final String shopName;
+  final String businessType;
   final VoidCallback onDelete;
   final Function(Map<String, dynamic>) onUpdate;
 
@@ -10,6 +18,10 @@ class ProductDetails extends StatefulWidget {
     super.key,
     required this.product,
     required this.userRole,
+    required this.userId,
+    required this.userName,
+    required this.shopName,
+    required this.businessType,
     required this.onDelete,
     required this.onUpdate,
   });
@@ -19,6 +31,8 @@ class ProductDetails extends StatefulWidget {
 }
 
 class _ProductDetailsState extends State<ProductDetails> {
+  bool _isSubmittingOrder = false;
+
   double getNumber(dynamic value) {
     if (value == null) return 0;
     if (value is int) return value.toDouble();
@@ -79,6 +93,79 @@ class _ProductDetailsState extends State<ProductDetails> {
     if (!inStock || stockQty <= 0) return "Out of Stock";
     if (stockQty <= 5) return "Low Stock";
     return "In Stock";
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchWholesalers() async {
+    final base = dotenv.env['BASE_URL'] ?? '';
+    if (base.isEmpty) {
+      throw Exception("BASE_URL is missing in .env");
+    }
+
+    final uri = Uri.parse(
+      '$base/orders/wholesalers?businessType=${Uri.encodeComponent(widget.businessType)}',
+    );
+
+    final response = await http.get(uri).timeout(const Duration(seconds: 20));
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to fetch wholesalers");
+    }
+
+    final data = jsonDecode(response.body);
+
+    if (data is List) {
+      return data.map<Map<String, dynamic>>((e) {
+        return Map<String, dynamic>.from(e);
+      }).toList();
+    }
+
+    throw Exception("Invalid wholesaler response");
+  }
+
+  Future<void> _createOrder({
+    required Map<String, dynamic> wholesaler,
+    required double quantity,
+    required double pricePerUnit,
+    required String unit,
+  }) async {
+    final base = dotenv.env['BASE_URL'] ?? '';
+    if (base.isEmpty) {
+      throw Exception("BASE_URL is missing in .env");
+    }
+
+    final product = widget.product;
+    final totalAmount = quantity * pricePerUnit;
+
+    final uri = Uri.parse('$base/orders/create');
+
+    final payload = {
+      "retailerId": widget.userId,
+      "wholesalerId": wholesaler["_id"]?.toString() ?? "",
+      "productId": getText(product["_id"].toString().isNotEmpty
+          ? product["_id"]
+          : product["id"]),
+      "productName": getText(product["name"]),
+      "category": getText(product["category"]),
+      "businessType": widget.businessType,
+      "quantity": quantity,
+      "unit": unit,
+      "pricePerUnit": pricePerUnit,
+      "totalAmount": totalAmount,
+      "paymentStatus": "unpaid",
+      "orderStatus": "pending",
+    };
+
+    final response = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(payload),
+        )
+        .timeout(const Duration(seconds: 20));
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception("Failed to create order");
+    }
   }
 
   void editProduct() {
@@ -350,7 +437,7 @@ class _ProductDetailsState extends State<ProductDetails> {
     });
   }
 
-  void openWholesalerOrderForm() {
+  void openWholesalerOrderForm() async {
     final product = widget.product;
     final bool inWeight = product["inWeight"] == true;
     final String unitLabel = getText(product["weightUnit"]).isEmpty
@@ -364,6 +451,26 @@ class _ProductDetailsState extends State<ProductDetails> {
     final priceCtrl = TextEditingController(
       text: defaultPrice > 0 ? formatQuantity(defaultPrice) : "",
     );
+
+    List<Map<String, dynamic>> wholesalers = [];
+    Map<String, dynamic>? selectedWholesaler;
+
+    try {
+      wholesalers = await _fetchWholesalers();
+      if (wholesalers.isNotEmpty) {
+        selectedWholesaler = wholesalers.first;
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Failed to load wholesalers: $e"),
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
@@ -384,6 +491,68 @@ class _ProductDetailsState extends State<ProductDetails> {
                 price = parsedPrice;
                 total = parsedQuantity * parsedPrice;
               });
+            }
+
+            Future<void> submitOrder() async {
+              final orderQuantity =
+                  double.tryParse(quantityCtrl.text.trim()) ?? 0;
+              final orderPrice = double.tryParse(priceCtrl.text.trim()) ?? 0;
+
+              if (selectedWholesaler == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Please select wholesaler"),
+                  ),
+                );
+                return;
+              }
+
+              if (orderQuantity <= 0 || orderPrice <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Enter a valid quantity and price"),
+                  ),
+                );
+                return;
+              }
+
+              setModalState(() {
+                _isSubmittingOrder = true;
+              });
+
+              try {
+                await _createOrder(
+                  wholesaler: selectedWholesaler!,
+                  quantity: orderQuantity,
+                  pricePerUnit: orderPrice,
+                  unit: inWeight ? unitLabel : "item",
+                );
+
+                if (!mounted) return;
+
+                Navigator.pop(sheetContext);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      "Order sent to ${getText(selectedWholesaler!["shopName"]).isEmpty ? getText(selectedWholesaler!["name"]) : getText(selectedWholesaler!["shopName"])}",
+                    ),
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Failed to send order: $e"),
+                  ),
+                );
+              } finally {
+                if (mounted) {
+                  setState(() {
+                    _isSubmittingOrder = false;
+                  });
+                }
+              }
             }
 
             return Padding(
@@ -417,6 +586,35 @@ class _ProductDetailsState extends State<ProductDetails> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    DropdownButtonFormField<Map<String, dynamic>>(
+                      value: selectedWholesaler,
+                      items: wholesalers.map((w) {
+                        final shopName = getText(w["shopName"]);
+                        final name = getText(w["name"]);
+                        final businessType = getText(w["businessType"]);
+
+                        return DropdownMenuItem<Map<String, dynamic>>(
+                          value: w,
+                          child: Text(
+                            shopName.isNotEmpty
+                                ? "$shopName ($businessType)"
+                                : "$name ($businessType)",
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        setModalState(() {
+                          selectedWholesaler = val;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Suggested Wholesaler",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: quantityCtrl,
                       keyboardType: TextInputType.numberWithOptions(
@@ -481,45 +679,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          final orderQuantity =
-                              double.tryParse(quantityCtrl.text.trim()) ?? 0;
-                          final orderPrice =
-                              double.tryParse(priceCtrl.text.trim()) ?? 0;
-
-                          if (orderQuantity <= 0 || orderPrice <= 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  "Enter a valid quantity and price",
-                                ),
-                              ),
-                            );
-                            return;
-                          }
-
-                          Navigator.pop(sheetContext);
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                "Order sent for ${formatQuantity(orderQuantity)} "
-                                "${inWeight ? unitLabel : "items"} at "
-                                "${formatCurrency(orderPrice)} each",
-                              ),
-                            ),
-                          );
-
-                          debugPrint({
-                            "productId": product["id"],
-                            "productName": getText(product["name"]),
-                            "quantity": orderQuantity,
-                            "pricePerUnit": orderPrice,
-                            "unit": inWeight ? unitLabel : "item",
-                            "total": orderQuantity * orderPrice,
-                            "status": "pending",
-                          }.toString());
-                        },
+                        onPressed: _isSubmittingOrder ? null : submitOrder,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xff6D5DF6),
                           foregroundColor: Colors.white,
@@ -527,8 +687,19 @@ class _ProductDetailsState extends State<ProductDetails> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        icon: const Icon(Icons.local_shipping_outlined),
-                        label: const Text("Send Order"),
+                        icon: _isSubmittingOrder
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.local_shipping_outlined),
+                        label: Text(
+                          _isSubmittingOrder ? "Sending..." : "Send Order",
+                        ),
                       ),
                     ),
                   ],

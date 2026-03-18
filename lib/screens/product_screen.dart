@@ -9,11 +9,17 @@ import 'product_detail.dart';
 class ProductScreen extends StatefulWidget {
   final String userId;
   final UserRole userRole;
+  final String userName;
+  final String shopName;
+  final String initialBusinessType;
 
   const ProductScreen({
     super.key,
     required this.userId,
     required this.userRole,
+    this.userName = '',
+    this.shopName = '',
+    this.initialBusinessType = '',
   });
 
   @override
@@ -22,7 +28,7 @@ class ProductScreen extends StatefulWidget {
 
 class _ProductScreenState extends State<ProductScreen> {
   String searchText = "";
-  String businessType = "General";
+  late String businessType;
   bool isLoading = true;
 
   List<Map<String, dynamic>> products = [];
@@ -31,6 +37,9 @@ class _ProductScreenState extends State<ProductScreen> {
   @override
   void initState() {
     super.initState();
+    businessType = widget.initialBusinessType.trim().isEmpty
+        ? "General"
+        : widget.initialBusinessType.trim();
     loadAllData();
   }
 
@@ -55,7 +64,10 @@ class _ProductScreenState extends State<ProductScreen> {
 
       if (resp.statusCode == 200 && data["success"] == true) {
         setState(() {
-          businessType = data["businessType"] ?? "General";
+          businessType = (data["businessType"]?.toString().trim().isNotEmpty ??
+                  false)
+              ? data["businessType"].toString().trim()
+              : businessType;
           suggestions = List<Map<String, dynamic>>.from(
             data["suggestions"] ?? [],
           );
@@ -234,13 +246,14 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   void openAddProductForm() {
-    TextEditingController nameCtrl = TextEditingController();
-    TextEditingController categoryCtrl = TextEditingController(text: businessType);
-    TextEditingController descCtrl = TextEditingController();
-    TextEditingController purchaseCtrl = TextEditingController();
-    TextEditingController sellingCtrl = TextEditingController();
-    TextEditingController stockCtrl = TextEditingController();
-    TextEditingController weightCtrl = TextEditingController();
+    final TextEditingController nameCtrl = TextEditingController();
+    final TextEditingController categoryCtrl =
+        TextEditingController(text: businessType);
+    final TextEditingController descCtrl = TextEditingController();
+    final TextEditingController purchaseCtrl = TextEditingController();
+    final TextEditingController sellingCtrl = TextEditingController();
+    final TextEditingController stockCtrl = TextEditingController();
+    final TextEditingController weightCtrl = TextEditingController();
 
     bool inStock = true;
     bool inWeight = false;
@@ -253,7 +266,7 @@ class _ProductScreenState extends State<ProductScreen> {
     String? sellingError;
     String? stockError;
 
-    List<String> weightUnits = [
+    final List<String> weightUnits = [
       "kg",
       "gram",
       "liter",
@@ -271,8 +284,8 @@ class _ProductScreenState extends State<ProductScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             void calcProfit() {
-              double purchase = double.tryParse(purchaseCtrl.text) ?? 0;
-              double selling = double.tryParse(sellingCtrl.text) ?? 0;
+              final purchase = double.tryParse(purchaseCtrl.text) ?? 0;
+              final selling = double.tryParse(sellingCtrl.text) ?? 0;
 
               setModalState(() {
                 profit = selling - purchase;
@@ -310,7 +323,6 @@ class _ProductScreenState extends State<ProductScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // HEADER
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -327,13 +339,10 @@ class _ProductScreenState extends State<ProductScreen> {
                         )
                       ],
                     ),
-
                     if (suggestions.isNotEmpty) ...[
                       Text(
                         "Suggested for $businessType",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 8),
                       SizedBox(
@@ -353,8 +362,6 @@ class _ProductScreenState extends State<ProductScreen> {
                       ),
                       const SizedBox(height: 15),
                     ],
-
-                    // NAME
                     const Text("Product Name *"),
                     const SizedBox(height: 6),
                     TextField(
@@ -366,10 +373,7 @@ class _ProductScreenState extends State<ProductScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
-                    // CATEGORY
                     const Text("Category *"),
                     const SizedBox(height: 6),
                     TextField(
@@ -381,10 +385,7 @@ class _ProductScreenState extends State<ProductScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
-                    // DESCRIPTION
                     const Text("Description"),
                     const SizedBox(height: 6),
                     TextField(
@@ -396,10 +397,7 @@ class _ProductScreenState extends State<ProductScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 14),
-
-                    // PURCHASE + SELLING
                     Row(
                       children: [
                         Expanded(
@@ -433,10 +431,7 @@ class _ProductScreenState extends State<ProductScreen> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 12),
-
-                    // PROFIT
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(14),
@@ -449,10 +444,7 @@ class _ProductScreenState extends State<ProductScreen> {
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
-
                     const SizedBox(height: 14),
-
-                    // STOCK
                     const Text("Stock Quantity *"),
                     const SizedBox(height: 6),
                     TextField(
@@ -465,10 +457,7 @@ class _ProductScreenState extends State<ProductScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 15),
-
-                    // IN STOCK
                     SwitchListTile(
                       value: inStock,
                       title: const Text("In Stock"),
@@ -476,8 +465,6 @@ class _ProductScreenState extends State<ProductScreen> {
                         setModalState(() => inStock = val);
                       },
                     ),
-
-                    // SELL IN WEIGHT
                     SwitchListTile(
                       value: inWeight,
                       title: const Text("Sell in Weight"),
@@ -485,7 +472,6 @@ class _ProductScreenState extends State<ProductScreen> {
                         setModalState(() => inWeight = val);
                       },
                     ),
-
                     if (inWeight) ...[
                       const SizedBox(height: 10),
                       DropdownButtonFormField<String>(
@@ -514,10 +500,7 @@ class _ProductScreenState extends State<ProductScreen> {
                         ),
                       ),
                     ],
-
                     const SizedBox(height: 20),
-
-                    // ADD BUTTON
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -527,12 +510,15 @@ class _ProductScreenState extends State<ProductScreen> {
                           setModalState(() {
                             nameError =
                                 nameCtrl.text.trim().isEmpty ? "Required" : null;
-                            categoryError =
-                                categoryCtrl.text.trim().isEmpty ? "Required" : null;
-                            purchaseError =
-                                purchaseCtrl.text.trim().isEmpty ? "Required" : null;
-                            sellingError =
-                                sellingCtrl.text.trim().isEmpty ? "Required" : null;
+                            categoryError = categoryCtrl.text.trim().isEmpty
+                                ? "Required"
+                                : null;
+                            purchaseError = purchaseCtrl.text.trim().isEmpty
+                                ? "Required"
+                                : null;
+                            sellingError = sellingCtrl.text.trim().isEmpty
+                                ? "Required"
+                                : null;
                             stockError =
                                 stockCtrl.text.trim().isEmpty ? "Required" : null;
                           });
@@ -677,6 +663,10 @@ class _ProductScreenState extends State<ProductScreen> {
                                 builder: (_) => ProductDetails(
                                   product: product,
                                   userRole: widget.userRole.label,
+                                  userId: widget.userId,
+                                  userName: widget.userName,
+                                  shopName: widget.shopName,
+                                  businessType: businessType,
                                   onDelete: () async {
                                     await deleteProductApi(product["_id"]);
                                     if (mounted) Navigator.pop(context);
@@ -717,7 +707,8 @@ class _ProductScreenState extends State<ProductScreen> {
                                   decoration: BoxDecoration(
                                     color: outOfStock
                                         ? Colors.red.withOpacity(0.10)
-                                        : const Color(0xff6D5DF6).withOpacity(0.10),
+                                        : const Color(0xff6D5DF6)
+                                            .withOpacity(0.10),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: Icon(
@@ -779,7 +770,8 @@ class _ProductScreenState extends State<ProductScreen> {
                                             decoration: BoxDecoration(
                                               color: outOfStock
                                                   ? Colors.red.withOpacity(0.10)
-                                                  : Colors.green.withOpacity(0.10),
+                                                  : Colors.green
+                                                      .withOpacity(0.10),
                                               borderRadius:
                                                   BorderRadius.circular(30),
                                             ),
@@ -804,7 +796,8 @@ class _ProductScreenState extends State<ProductScreen> {
                                           Expanded(
                                             child: _infoBox(
                                               title: "Selling",
-                                              value: "₹${selling.toStringAsFixed(0)}",
+                                              value:
+                                                  "₹${selling.toStringAsFixed(0)}",
                                               color: const Color(0xff2196F3),
                                             ),
                                           ),
@@ -812,7 +805,8 @@ class _ProductScreenState extends State<ProductScreen> {
                                           Expanded(
                                             child: _infoBox(
                                               title: "Profit",
-                                              value: "₹${profit.toStringAsFixed(0)}",
+                                              value:
+                                                  "₹${profit.toStringAsFixed(0)}",
                                               color: const Color(0xff2E7D32),
                                             ),
                                           ),

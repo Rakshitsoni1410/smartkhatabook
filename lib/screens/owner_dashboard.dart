@@ -66,6 +66,9 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             page: ProductScreen(
               userId: widget.userId,
               userRole: widget.userRole,
+              userName: widget.userName,
+              shopName: widget.shopName,
+              initialBusinessType: widget.businessType,
             ),
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.inventory_2_outlined),
@@ -80,8 +83,10 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             ),
           ),
           _DashboardTabConfig(
-            page: const WholesalerOrderListScreen(
+            page: WholesalerOrderListScreen(
               title: 'All Orders',
+              userId: widget.userId,
+              userRole: widget.userRole.label,
             ),
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.local_shipping_outlined),
@@ -117,6 +122,9 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             page: ProductScreen(
               userId: widget.userId,
               userRole: widget.userRole,
+              userName: widget.userName,
+              shopName: widget.shopName,
+              initialBusinessType: widget.businessType,
             ),
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.inventory_2_outlined),
@@ -131,8 +139,10 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             ),
           ),
           _DashboardTabConfig(
-            page: const WholesalerOrderListScreen(
+            page: WholesalerOrderListScreen(
               title: 'Orders',
+              userId: widget.userId,
+              userRole: widget.userRole.label,
             ),
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.local_shipping_outlined),
@@ -186,6 +196,9 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             page: ProductScreen(
               userId: widget.userId,
               userRole: widget.userRole,
+              userName: widget.userName,
+              shopName: widget.shopName,
+              initialBusinessType: widget.businessType,
             ),
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.inventory_2_outlined),
@@ -200,8 +213,10 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             ),
           ),
           _DashboardTabConfig(
-            page: const WholesalerOrderListScreen(
+            page: WholesalerOrderListScreen(
               title: 'Order Status',
+              userId: widget.userId,
+              userRole: widget.userRole.label,
             ),
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.local_shipping_outlined),
