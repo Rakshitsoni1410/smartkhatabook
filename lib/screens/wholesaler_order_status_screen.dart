@@ -38,7 +38,8 @@ class _WholesalerOrderStatusScreenState
   @override
   void initState() {
     super.initState();
-    _status = _parseStatus(widget.order["orderStatus"]?.toString() ?? "pending");
+    _status =
+        _parseStatus(widget.order["orderStatus"]?.toString() ?? "pending");
   }
 
   OrderStatus _parseStatus(String value) {
@@ -87,8 +88,9 @@ class _WholesalerOrderStatusScreenState
       case OrderStatus.delivered:
         return Colors.green;
       case OrderStatus.rejected:
-      case OrderStatus.cancelled:
         return Colors.red;
+      case OrderStatus.cancelled:
+        return Colors.red.shade700;
     }
   }
 
@@ -229,8 +231,12 @@ class _WholesalerOrderStatusScreenState
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Order status updated successfully"),
+        SnackBar(
+          content: Text(
+            _status == OrderStatus.rejected
+                ? "Order rejected successfully"
+                : "Order status updated successfully",
+          ),
         ),
       );
 
@@ -263,9 +269,7 @@ class _WholesalerOrderStatusScreenState
       ];
     }
 
-    return [
-      _status,
-    ];
+    return [_status];
   }
 
   @override
@@ -396,8 +400,18 @@ class _WholesalerOrderStatusScreenState
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(Icons.check_circle),
-                label: Text(canEditStatus ? "Save Status" : "Close"),
+                    : Icon(
+                        _status == OrderStatus.rejected
+                            ? Icons.cancel
+                            : Icons.check_circle,
+                      ),
+                label: Text(
+                  canEditStatus
+                      ? (_status == OrderStatus.rejected
+                          ? "Reject Order"
+                          : "Save Status")
+                      : "Close",
+                ),
                 onPressed: _isSaving
                     ? null
                     : canEditStatus
