@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
 import '../models/user_role.dart';
 
@@ -6,10 +10,12 @@ class ReviewScreen extends StatefulWidget {
   final UserRole userRole;
   final String shopName;
   final String businessType;
+  final String userId;
 
   const ReviewScreen({
     super.key,
     required this.userRole,
+    required this.userId,
     this.shopName = '',
     this.businessType = '',
   });
@@ -19,82 +25,28 @@ class ReviewScreen extends StatefulWidget {
 }
 
 class _ReviewScreenState extends State<ReviewScreen> {
-  late final List<Map<String, dynamic>> _reviews;
+  bool _isLoading = true;
+  bool _isSubmitting = false;
+  List<Map<String, dynamic>> _reviews = [];
 
   @override
   void initState() {
     super.initState();
-    _reviews = _defaultReviews();
+    _loadReviews();
   }
 
-  List<Map<String, dynamic>> _defaultReviews() {
-    if (widget.userRole == UserRole.wholesaler) {
-      return [
-        {
-          'author': 'Patel Retail',
-          'rating': 5,
-          'title': 'Fast stock delivery',
-          'comment':
-              'Products arrived on time and the stock quality was excellent.',
-        },
-        {
-          'author': 'A-One Mart',
-          'rating': 4,
-          'title': 'Reliable employee support',
-          'comment':
-              'Billing and loading support was smooth. Keep the packing speed consistent.',
-        },
-        {
-          'author': 'Shree Grocers',
-          'rating': 5,
-          'title': 'Good wholesale rates',
-          'comment':
-              'Very useful pricing for repeat orders in the same business category.',
-        },
-      ];
-    }
+  String get _baseUrl => dotenv.env['BASE_URL'] ?? '';
 
-    if (widget.userRole == UserRole.customer) {
-      return [
-        {
-          'author': 'Ledger Team',
-          'rating': 4,
-          'title': 'Transparent account history',
-          'comment':
-              'Your recent payments and pending balances are easy to understand.',
-        },
-        {
-          'author': 'Store Owner',
-          'rating': 5,
-          'title': 'Prompt settlement',
-          'comment': 'Payments are usually completed on time and records stay clean.',
-        },
-      ];
-    }
+  String get _displayShopName {
+    return widget.shopName.trim().isEmpty
+        ? widget.userRole.label
+        : widget.shopName.trim();
+  }
 
-    return [
-      {
-        'author': 'Walk-in Customer',
-        'rating': 5,
-        'title': 'Helpful service',
-        'comment':
-            'The retailer suggested the right items and handled the order quickly.',
-      },
-      {
-        'author': 'Supplier Network',
-        'rating': 4,
-        'title': 'Consistent ordering',
-        'comment':
-            'Orders match the business type well and status updates are easy to follow.',
-      },
-      {
-        'author': 'Regular Buyer',
-        'rating': 4,
-        'title': 'Clear ledger follow-up',
-        'comment':
-            'Billing and pending amount discussion stays simple and transparent.',
-      },
-    ];
+  String get _displayBusinessType {
+    return widget.businessType.trim().isEmpty
+        ? 'General'
+        : widget.businessType.trim();
   }
 
   double get _averageRating {
@@ -108,6 +60,80 @@ class _ReviewScreenState extends State<ReviewScreen> {
     return total / _reviews.length;
   }
 
+  Future<void> _loadReviews() async {
+    setState(() => _isLoading = true);
+
+    try {
+      if (_baseUrl.isEmpty) {
+        throw Exception("BASE_URL is missing in .env");
+      }
+
+      final uri = Uri.parse('$_baseUrl/reviews/${widget.userId}');
+      final response = await http.get(uri).timeout(const Duration(seconds: 20));
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        List<dynamic> rawList = [];
+
+        if (data is List) {
+          rawList = data;
+        } else if (data is Map && data["reviews"] is List) {
+          rawList = data["reviews"];
+        }
+
+        setState(() {
+          _reviews = rawList.map((e) => Map<String, dynamic>.from(e)).toList();
+        });
+      } else {
+        throw Exception(data["message"] ?? "Failed to load reviews");
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Reviews load failed: $e")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _submitReview({
+    required String reviewer,
+    required String comment,
+    required double rating,
+  }) async {
+    if (_baseUrl.isEmpty) {
+      throw Exception("BASE_URL is missing in .env");
+    }
+
+    final uri = Uri.parse('$_baseUrl/reviews/add');
+
+    final response = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            "targetUserId": widget.userId,
+            "author": reviewer,
+            "comment": comment,
+            "rating": rating.round(),
+            "title": "New review",
+            "shopName": widget.shopName,
+            "businessType": widget.businessType,
+            "role": widget.userRole.label,
+          }),
+        )
+        .timeout(const Duration(seconds: 20));
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(data["message"] ?? "Failed to save review");
+    }
+  }
+
   void _openAddReviewSheet() {
     final nameController = TextEditingController();
     final commentController = TextEditingController();
@@ -116,90 +142,165 @@ class _ReviewScreenState extends State<ReviewScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            return Container(
+              decoration: const BoxDecoration(
+                color: Color(0xffF7F9FC),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Add Review',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 20,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade400,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Reviewer name',
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Add Review',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: commentController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Review comment',
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(
+                          labelText: 'Reviewer name',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Rating: ${rating.toStringAsFixed(0)}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    Slider(
-                      value: rating,
-                      min: 1,
-                      max: 5,
-                      divisions: 4,
-                      label: rating.toStringAsFixed(0),
-                      onChanged: (value) {
-                        setModalState(() => rating = value);
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final reviewer = nameController.text.trim();
-                          final comment = commentController.text.trim();
-
-                          if (reviewer.isEmpty || comment.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please enter name and comment'),
-                              ),
-                            );
-                            return;
-                          }
-
-                          setState(() {
-                            _reviews.insert(0, {
-                              'author': reviewer,
-                              'rating': rating.round(),
-                              'title': 'New review',
-                              'comment': comment,
-                            });
-                          });
-
-                          Navigator.pop(context);
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: commentController,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          labelText: 'Review comment',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Rating: ${rating.toStringAsFixed(0)}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      Slider(
+                        value: rating,
+                        min: 1,
+                        max: 5,
+                        divisions: 4,
+                        label: rating.toStringAsFixed(0),
+                        onChanged: (value) {
+                          setModalState(() => rating = value);
                         },
-                        child: const Text('Save Review'),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: _isSubmitting
+                              ? null
+                              : () async {
+                                  final reviewer = nameController.text.trim();
+                                  final comment = commentController.text.trim();
+
+                                  if (reviewer.isEmpty || comment.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Please enter name and comment',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  setState(() => _isSubmitting = true);
+
+                                  try {
+                                    await _submitReview(
+                                      reviewer: reviewer,
+                                      comment: comment,
+                                      rating: rating,
+                                    );
+
+                                    await _loadReviews();
+
+                                    if (!mounted) return;
+                                    Navigator.pop(context);
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Review added successfully'),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Failed to save review: $e',
+                                        ),
+                                      ),
+                                    );
+                                  } finally {
+                                    if (mounted) {
+                                      setState(() => _isSubmitting = false);
+                                    }
+                                  }
+                                },
+                          icon: _isSubmitting
+                              ? const SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.rate_review_outlined),
+                          label: Text(
+                            _isSubmitting ? 'Saving...' : 'Save Review',
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xff2563EB),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -212,161 +313,254 @@ class _ReviewScreenState extends State<ReviewScreen> {
     });
   }
 
+  Widget _buildStarRow(int rating, {double size = 18}) {
+    return Row(
+      children: List.generate(
+        5,
+        (index) => Icon(
+          index < rating ? Icons.star_rounded : Icons.star_border_rounded,
+          color: Colors.amber,
+          size: size,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final displayShopName = widget.shopName.trim().isEmpty
-        ? widget.userRole.label
-        : widget.shopName.trim();
-    final displayBusinessType = widget.businessType.trim().isEmpty
-        ? 'General'
-        : widget.businessType.trim();
-
     return Scaffold(
+      backgroundColor: const Color(0xffF5F7FB),
       appBar: AppBar(
         title: const Text('Reviews'),
+        backgroundColor: const Color(0xff2563EB),
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _openAddReviewSheet,
-        child: const Icon(Icons.rate_review_outlined),
+        backgroundColor: const Color(0xff2563EB),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.rate_review_outlined),
+        label: const Text("Add Review"),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  height: 60,
-                  width: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: const Icon(
-                    Icons.star_rounded,
-                    color: Colors.amber,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayShopName,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$displayBusinessType business reviews',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      _averageRating.toStringAsFixed(1),
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Text(
-                      'Average',
-                      style: TextStyle(
-                        color: Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          ..._reviews.map((review) {
-            final rating = (review['rating'] as num?)?.toInt() ?? 0;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: RefreshIndicator(
+        onRefresh: _loadReviews,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                padding: const EdgeInsets.all(16),
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          review['author']?.toString() ?? 'Reviewer',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xff2563EB),
+                          Color(0xff0EA5E9),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      Row(
-                        children: List.generate(
-                          5,
-                          (index) => Icon(
-                            index < rating ? Icons.star_rounded : Icons.star_border_rounded,
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          height: 64,
+                          width: 64,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: const Icon(
+                            Icons.star_rounded,
                             color: Colors.amber,
-                            size: 18,
+                            size: 34,
                           ),
                         ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _displayShopName,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$_displayBusinessType business reviews',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${_reviews.length} total review(s)',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              _averageRating.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const Text(
+                              'Average',
+                              style: TextStyle(
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  if (_reviews.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(28),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 14,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    review['title']?.toString() ?? '',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    review['comment']?.toString() ?? '',
-                    style: TextStyle(
-                      color: Colors.grey.shade700,
-                      height: 1.45,
-                    ),
-                  ),
+                      child: Column(
+                        children: const [
+                          Icon(
+                            Icons.reviews_outlined,
+                            size: 42,
+                            color: Colors.grey,
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'No reviews yet',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            'Be the first to add a review.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.black54),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ..._reviews.map((review) {
+                      final rating = (review['rating'] as num?)?.toInt() ?? 0;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 22,
+                                  backgroundColor:
+                                      const Color(0xff2563EB).withOpacity(0.12),
+                                  child: Text(
+                                    (review['author']?.toString().isNotEmpty ??
+                                            false)
+                                        ? review['author']
+                                            .toString()
+                                            .trim()
+                                            .substring(0, 1)
+                                            .toUpperCase()
+                                        : 'R',
+                                    style: const TextStyle(
+                                      color: Color(0xff2563EB),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        review['author']?.toString() ??
+                                            'Reviewer',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      _buildStarRow(rating),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              review['title']?.toString() ?? 'Review',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              review['comment']?.toString() ?? '',
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                                height: 1.45,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                 ],
               ),
-            );
-          }),
-        ],
       ),
     );
   }

@@ -47,6 +47,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     );
 
     final reviews = ReviewScreen(
+      userId: widget.userId,
       userRole: widget.userRole,
       shopName: widget.shopName,
       businessType: widget.businessType,
@@ -268,8 +269,5 @@ class _DashboardTabConfig {
   final Widget page;
   final BottomNavigationBarItem item;
 
-  const _DashboardTabConfig({
-    required this.page,
-    required this.item,
-  });
+  const _DashboardTabConfig({required this.page, required this.item});
 }
