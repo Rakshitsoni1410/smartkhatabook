@@ -337,6 +337,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         elevation: 0,
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: _openAddReviewSheet,
         backgroundColor: const Color(0xff2563EB),
         foregroundColor: Colors.white,

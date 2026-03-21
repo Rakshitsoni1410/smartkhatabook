@@ -612,6 +612,7 @@ class _ProductScreenState extends State<ProductScreen> {
       ),
       floatingActionButton: canManageStock
           ? FloatingActionButton(
+              heroTag: null,
               onPressed: openAddProductForm,
               backgroundColor: Colors.blue,
               child: const Icon(Icons.add),
