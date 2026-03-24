@@ -134,183 +134,45 @@ class _ReviewScreenState extends State<ReviewScreen> {
     }
   }
 
-  void _openAddReviewSheet() {
-    final nameController = TextEditingController();
-    final commentController = TextEditingController();
-    double rating = 4;
-
-    showModalBottomSheet(
+  Future<void> _openAddReviewSheet() async {
+    final reviewData = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Color(0xffF7F9FC),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 20,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 44,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade400,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      const Text(
-                        'Add Review',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: nameController,
-                        decoration: InputDecoration(
-                          labelText: 'Reviewer name',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: commentController,
-                        maxLines: 4,
-                        decoration: InputDecoration(
-                          labelText: 'Review comment',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Rating: ${rating.toStringAsFixed(0)}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      Slider(
-                        value: rating,
-                        min: 1,
-                        max: 5,
-                        divisions: 4,
-                        label: rating.toStringAsFixed(0),
-                        onChanged: (value) {
-                          setModalState(() => rating = value);
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton.icon(
-                          onPressed: _isSubmitting
-                              ? null
-                              : () async {
-                                  final reviewer = nameController.text.trim();
-                                  final comment = commentController.text.trim();
+      builder: (_) => const _AddReviewSheet(),
+    );
 
-                                  if (reviewer.isEmpty || comment.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Please enter name and comment',
-                                        ),
-                                      ),
-                                    );
-                                    return;
-                                  }
+    if (!mounted || reviewData == null) return;
 
-                                  setState(() => _isSubmitting = true);
+    setState(() => _isSubmitting = true);
 
-                                  try {
-                                    await _submitReview(
-                                      reviewer: reviewer,
-                                      comment: comment,
-                                      rating: rating,
-                                    );
+    try {
+      await _submitReview(
+        reviewer: reviewData['reviewer'] as String,
+        comment: reviewData['comment'] as String,
+        rating: (reviewData['rating'] as num).toDouble(),
+      );
 
-                                    await _loadReviews();
+      await _loadReviews();
 
-                                    if (!mounted) return;
-                                    Navigator.pop(context);
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Review added successfully'),
-                                      ),
-                                    );
-                                  } catch (e) {
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Failed to save review: $e',
-                                        ),
-                                      ),
-                                    );
-                                  } finally {
-                                    if (mounted) {
-                                      setState(() => _isSubmitting = false);
-                                    }
-                                  }
-                                },
-                          icon: _isSubmitting
-                              ? const SizedBox(
-                                  height: 18,
-                                  width: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.rate_review_outlined),
-                          label: Text(
-                            _isSubmitting ? 'Saving...' : 'Save Review',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xff2563EB),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    ).whenComplete(() {
-      nameController.dispose();
-      commentController.dispose();
-    });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Review added successfully'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save review: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   Widget _buildStarRow(int rating, {double size = 18}) {
@@ -338,7 +200,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: null,
-        onPressed: _openAddReviewSheet,
+        onPressed: _isSubmitting ? null : _openAddReviewSheet,
         backgroundColor: const Color(0xff2563EB),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.rate_review_outlined),
@@ -562,6 +424,149 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     }),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+class _AddReviewSheet extends StatefulWidget {
+  const _AddReviewSheet();
+
+  @override
+  State<_AddReviewSheet> createState() => _AddReviewSheetState();
+}
+
+class _AddReviewSheetState extends State<_AddReviewSheet> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _commentController = TextEditingController();
+  double _rating = 4;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final reviewer = _nameController.text.trim();
+    final comment = _commentController.text.trim();
+
+    if (reviewer.isEmpty || comment.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter name and comment'),
+        ),
+      );
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+
+    Navigator.of(context).pop({
+      'reviewer': reviewer,
+      'comment': comment,
+      'rating': _rating,
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xffF7F9FC),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Add Review',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Reviewer name',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _commentController,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: 'Review comment',
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Rating: ${_rating.toStringAsFixed(0)}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              Slider(
+                value: _rating,
+                min: 1,
+                max: 5,
+                divisions: 4,
+                label: _rating.toStringAsFixed(0),
+                onChanged: (value) {
+                  setState(() => _rating = value);
+                },
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _submit,
+                  icon: const Icon(Icons.rate_review_outlined),
+                  label: const Text('Save Review'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff2563EB),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

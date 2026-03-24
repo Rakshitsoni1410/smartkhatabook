@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'employee_detail_screen.dart';
 
 class EmployeeScreen extends StatefulWidget {
@@ -65,248 +66,27 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
     return "₹${value.toStringAsFixed(0)}";
   }
 
-  void openEmployeeForm({Map<String, dynamic>? employee}) {
+  Future<void> openEmployeeForm({Map<String, dynamic>? employee}) async {
     final bool isEdit = employee != null;
 
-    final TextEditingController nameCtrl =
-        TextEditingController(text: employee?["name"]?.toString() ?? "");
-    final TextEditingController phoneCtrl =
-        TextEditingController(text: employee?["phone"]?.toString() ?? "");
-    final TextEditingController salaryCtrl = TextEditingController(
-      text: employee?["salary"]?.toString() ?? "",
-    );
-    final TextEditingController notesCtrl =
-        TextEditingController(text: employee?["notes"]?.toString() ?? "");
-
-    String category = employee?["category"]?.toString() ?? "Salesman";
-    int salaryDate = employee?["salaryDate"] ?? 1;
-
-    String? nameError;
-    String? phoneError;
-    String? salaryError;
-
-    final List<String> categories = [
-      "Cashier",
-      "Salesman",
-      "Delivery Boy",
-      "Manager",
-      "Other",
-    ];
-
-    showModalBottomSheet(
+    final updated = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: const Color(0xffF7F9FC),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 18,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 42,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade400,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      isEdit ? "Edit Employee" : "Add Employee",
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: nameCtrl,
-                      decoration: InputDecoration(
-                        labelText: "Employee Name",
-                        errorText: nameError,
-                        prefixIcon: const Icon(Icons.person_outline),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: phoneCtrl,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: "Phone Number",
-                        errorText: phoneError,
-                        prefixIcon: const Icon(Icons.phone_outlined),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: category,
-                      items: categories
-                          .map(
-                            (c) => DropdownMenuItem(
-                              value: c,
-                              child: Text(c),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (val) {
-                        setModalState(() => category = val!);
-                      },
-                      decoration: InputDecoration(
-                        labelText: "Category",
-                        prefixIcon: const Icon(Icons.work_outline),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: salaryCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: "Monthly Salary",
-                        errorText: salaryError,
-                        prefixIcon: const Icon(Icons.currency_rupee),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<int>(
-                      value: salaryDate,
-                      items: List.generate(
-                        31,
-                        (index) => DropdownMenuItem(
-                          value: index + 1,
-                          child: Text("${index + 1}"),
-                        ),
-                      ),
-                      onChanged: (val) {
-                        setModalState(() => salaryDate = val!);
-                      },
-                      decoration: InputDecoration(
-                        labelText: "Salary Pay Date",
-                        prefixIcon: const Icon(Icons.calendar_today_outlined),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: notesCtrl,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: "Notes",
-                        prefixIcon: const Icon(Icons.note_alt_outlined),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          setModalState(() {
-                            nameError = nameCtrl.text.trim().isEmpty
-                                ? "Name is required"
-                                : null;
-                            phoneError = phoneCtrl.text.trim().isEmpty
-                                ? "Phone is required"
-                                : null;
-                            salaryError = salaryCtrl.text.trim().isEmpty
-                                ? "Salary is required"
-                                : null;
-                          });
+      builder: (_) => _EmployeeFormSheet(employee: employee),
+    );
 
-                          if (nameError != null ||
-                              phoneError != null ||
-                              salaryError != null) {
-                            return;
-                          }
+    if (!mounted || updated == null) return;
 
-                          final updated = {
-                            "name": nameCtrl.text.trim(),
-                            "phone": phoneCtrl.text.trim(),
-                            "category": category,
-                            "salary": double.tryParse(salaryCtrl.text) ?? 0,
-                            "salaryDate": salaryDate,
-                            "notes": notesCtrl.text.trim(),
-                            "payments":
-                                employee?["payments"] ?? <Map<String, dynamic>>[],
-                          };
-
-                          setState(() {
-                            if (isEdit) {
-                              employee!.addAll(updated);
-                            } else {
-                              employees.add(updated);
-                            }
-                          });
-
-                          Navigator.pop(context);
-                        },
-                        icon: Icon(
-                          isEdit ? Icons.save_outlined : Icons.person_add_alt_1,
-                        ),
-                        label: Text(isEdit ? "Update Employee" : "Save Employee"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xff6D5DF6),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    ).whenComplete(() {
-      nameCtrl.dispose();
-      phoneCtrl.dispose();
-      salaryCtrl.dispose();
-      notesCtrl.dispose();
+    setState(() {
+      if (isEdit) {
+        employee!.addAll(updated);
+      } else {
+        employees.add(updated);
+      }
     });
   }
 
@@ -704,6 +484,279 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
                         return _employeeCard(emp);
                       },
                     ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmployeeFormSheet extends StatefulWidget {
+  final Map<String, dynamic>? employee;
+
+  const _EmployeeFormSheet({this.employee});
+
+  @override
+  State<_EmployeeFormSheet> createState() => _EmployeeFormSheetState();
+}
+
+class _EmployeeFormSheetState extends State<_EmployeeFormSheet> {
+  static const List<String> _categories = [
+    "Cashier",
+    "Salesman",
+    "Delivery Boy",
+    "Manager",
+    "Other",
+  ];
+
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _phoneCtrl;
+  late final TextEditingController _salaryCtrl;
+  late final TextEditingController _notesCtrl;
+  late String _category;
+  late int _salaryDate;
+
+  String? _nameError;
+  String? _phoneError;
+  String? _salaryError;
+
+  bool get _isEdit => widget.employee != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(
+      text: widget.employee?["name"]?.toString() ?? "",
+    );
+    _phoneCtrl = TextEditingController(
+      text: widget.employee?["phone"]?.toString() ?? "",
+    );
+    _salaryCtrl = TextEditingController(
+      text: widget.employee?["salary"]?.toString() ?? "",
+    );
+    _notesCtrl = TextEditingController(
+      text: widget.employee?["notes"]?.toString() ?? "",
+    );
+    _category = widget.employee?["category"]?.toString() ?? "Salesman";
+    _salaryDate = widget.employee?["salaryDate"] ?? 1;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _salaryCtrl.dispose();
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final phone = _phoneCtrl.text.trim();
+
+    setState(() {
+      _nameError = _nameCtrl.text.trim().isEmpty ? "Name is required" : null;
+      if (phone.isEmpty) {
+        _phoneError = "Phone is required";
+      } else if (!RegExp(r'^\d{10}$').hasMatch(phone)) {
+        _phoneError = "Phone number must be 10 digits";
+      } else {
+        _phoneError = null;
+      }
+      _salaryError =
+          _salaryCtrl.text.trim().isEmpty ? "Salary is required" : null;
+    });
+
+    if (_nameError != null || _phoneError != null || _salaryError != null) {
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+
+    Navigator.of(context).pop({
+      "name": _nameCtrl.text.trim(),
+      "phone": _phoneCtrl.text.trim(),
+      "category": _category,
+      "salary": double.tryParse(_salaryCtrl.text) ?? 0,
+      "salaryDate": _salaryDate,
+      "notes": _notesCtrl.text.trim(),
+      "payments": widget.employee?["payments"] ?? <Map<String, dynamic>>[],
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 18,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _isEdit ? "Edit Employee" : "Add Employee",
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _nameCtrl,
+              decoration: InputDecoration(
+                labelText: "Employee Name",
+                errorText: _nameError,
+                prefixIcon: const Icon(Icons.person_outline),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+           TextField(
+  controller: _phoneCtrl,
+  keyboardType: TextInputType.phone,
+  inputFormatters: [
+    FilteringTextInputFormatter.digitsOnly,
+    LengthLimitingTextInputFormatter(10),
+  ],
+  onChanged: (value) {
+    setState(() {
+      if (value.isEmpty) {
+        _phoneError = "Phone is required";
+      } else if (value.length < 10) {
+        _phoneError = "Enter 10 digit number";
+      } else {
+        _phoneError = null;
+      }
+    });
+  },
+  decoration: InputDecoration(
+    labelText: "Phone Number",
+    errorText: _phoneError,
+    counterText: "",
+    prefixIcon: const Icon(Icons.phone_outlined),
+    suffixIcon: _phoneCtrl.text.length == 10
+        ? const Icon(Icons.check_circle, color: Colors.green)
+        : null,
+    filled: true,
+    fillColor: Colors.white,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+    ),
+  ),
+),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _category,
+              items: _categories
+                  .map(
+                    (category) => DropdownMenuItem(
+                      value: category,
+                      child: Text(category),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                setState(() => _category = value!);
+              },
+              decoration: InputDecoration(
+                labelText: "Category",
+                prefixIcon: const Icon(Icons.work_outline),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _salaryCtrl,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: "Monthly Salary",
+                errorText: _salaryError,
+                prefixIcon: const Icon(Icons.currency_rupee),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              value: _salaryDate,
+              items: List.generate(
+                31,
+                (index) => DropdownMenuItem(
+                  value: index + 1,
+                  child: Text("${index + 1}"),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() => _salaryDate = value!);
+              },
+              decoration: InputDecoration(
+                labelText: "Salary Pay Date",
+                prefixIcon: const Icon(Icons.calendar_today_outlined),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _notesCtrl,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: "Notes",
+                prefixIcon: const Icon(Icons.note_alt_outlined),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: _submit,
+                icon: Icon(
+                  _isEdit ? Icons.save_outlined : Icons.person_add_alt_1,
+                ),
+                label: Text(_isEdit ? "Update Employee" : "Save Employee"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xff6D5DF6),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
