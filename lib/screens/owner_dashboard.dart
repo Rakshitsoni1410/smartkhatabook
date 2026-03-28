@@ -40,6 +40,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
   List<_DashboardTabConfig> _buildTabs() {
     final home = DashboardHomeScreen(
+      userId: widget.userId,
       userName: widget.userName,
       shopName: widget.shopName,
       businessType: widget.businessType,
