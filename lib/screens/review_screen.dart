@@ -155,15 +155,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
       await action();
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(successMessage)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(successMessage)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-        ),
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     } finally {
       if (mounted) {
@@ -197,16 +195,20 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
         if (!mounted) return;
         setState(() {
-          _reviews = rawList.map((e) => Map<String, dynamic>.from(e)).toList();
+          _reviews = rawList.map((e) {
+            final map = Map<String, dynamic>.from(e as Map);
+            map['reply'] ??= <String, dynamic>{};
+            return map;
+          }).toList();
         });
       } else {
         throw Exception(_extractMessage(data, 'Failed to load reviews'));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Reviews load failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Reviews load failed: $e')));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -215,40 +217,43 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   Future<void> _submitReview({
-    required String reviewer,
-    required String comment,
-    required double rating,
-  }) async {
-    if (_baseUrl.isEmpty) {
-      throw Exception('BASE_URL is missing in .env');
-    }
-
-    final uri = Uri.parse('$_baseUrl/reviews/add');
-
-    final response = await http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'targetUserId': widget.userId,
-            'author': reviewer,
-            'comment': comment,
-            'rating': rating.round(),
-            'title': 'New review',
-            'shopName': widget.shopName,
-            'businessType': widget.businessType,
-            'role': widget.userRole.label,
-          }),
-        )
-        .timeout(const Duration(seconds: 20));
-
-    final data = _decodeResponseBody(response.body);
-
-    if (response.statusCode != 201 && response.statusCode != 200) {
-      throw Exception(_extractMessage(data, 'Failed to save review'));
-    }
+  required String reviewer,
+  required String comment,
+  required double rating,
+}) async {
+  if (_baseUrl.isEmpty) {
+    throw Exception('BASE_URL is missing in .env');
   }
 
+  // ✅ ADD THIS BLOCK HERE
+  if (widget.userRole != UserRole.retailer) {
+    throw Exception("Only Retailer can add review");
+  }
+
+  final uri = Uri.parse('$_baseUrl/reviews/add');
+
+  final response = await http
+      .post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'targetUserId': widget.userId,
+          'author': reviewer,
+          'comment': comment,
+          'rating': rating.round(),
+          'shopName': widget.shopName,
+          'businessType': widget.businessType,
+          'role': widget.userRole.label,
+        }),
+      )
+      .timeout(const Duration(seconds: 20));
+
+  final data = _decodeResponseBody(response.body);
+
+  if (response.statusCode != 201 && response.statusCode != 200) {
+    throw Exception(_extractMessage(data, 'Failed to save review'));
+  }
+}
   Future<void> _replyToReview(String reviewId, String text) async {
     if (_baseUrl.isEmpty) {
       throw Exception('BASE_URL is missing in .env');
@@ -259,7 +264,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
         .post(
           uri,
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'text': text}),
+          body: jsonEncode({
+            'text': text,
+            'role': widget.userRole.label,
+            'businessType': widget.businessType,
+          }),
         )
         .timeout(const Duration(seconds: 20));
 
@@ -355,10 +364,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFF2563EB),
-            Color(0xFF0EA5E9),
-          ],
+          colors: [Color(0xFF2563EB), Color(0xFF0EA5E9)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -424,9 +430,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.14),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.12),
-                    ),
+                    border: Border.all(color: Colors.white.withOpacity(0.12)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,9 +450,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         _reviewCount == 0
                             ? 'No ratings yet'
                             : 'Based on $_reviewCount review${_reviewCount == 1 ? '' : 's'}',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                        ),
+                        style: const TextStyle(color: Colors.white70),
                       ),
                     ],
                   ),
@@ -537,22 +539,24 @@ class _ReviewScreenState extends State<ReviewScreen> {
           const SizedBox(height: 16),
           Text(
             'No reviews yet',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Text(
             'Start the conversation and collect your first customer impression.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey.shade600,
-                  height: 1.5,
-                ),
+              color: Colors.grey.shade600,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 18),
           ElevatedButton.icon(
-            onPressed: _isSubmitting ? null : _openAddReviewSheet,
+            onPressed: (widget.userRole == UserRole.retailer && !_isSubmitting)
+    ? _openAddReviewSheet
+    : null,
             icon: const Icon(Icons.add_comment_outlined),
             label: const Text('Write first review'),
           ),
@@ -570,8 +574,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     final rating = (review['rating'] as num?)?.toInt() ?? 0;
     final reviewId = review['_id']?.toString();
     final hasReply = _hasReply(review);
-    final replyText =
-        hasReply ? review['reply']['text'].toString().trim() : '';
+    final replyText = hasReply ? review['reply']['text'].toString().trim() : '';
     final dateText = _formatDate(review['createdAt']?.toString());
     final accent = _ratingColor(rating);
     final showTitle = title.isNotEmpty && title.toLowerCase() != 'new review';
@@ -601,10 +604,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 backgroundColor: accent.withOpacity(0.12),
                 child: Text(
                   _initialsFor(author),
-                  style: TextStyle(
-                    color: accent,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: accent, fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(width: 12),
@@ -615,8 +615,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     Text(
                       author,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Wrap(
@@ -636,11 +636,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.star_rounded,
-                                size: 16,
-                                color: accent,
-                              ),
+                              Icon(Icons.star_rounded, size: 16, color: accent),
                               const SizedBox(width: 4),
                               Text(
                                 '$rating.0',
@@ -656,9 +652,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         if (dateText.isNotEmpty)
                           Text(
                             dateText,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey.shade500,
-                                ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.grey.shade500),
                           ),
                       ],
                     ),
@@ -672,9 +667,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
             Text(
               title,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0F172A),
-                  ),
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF0F172A),
+              ),
             ),
           ],
           if (comment.isNotEmpty) ...[
@@ -682,9 +677,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
             Text(
               comment,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF334155),
-                    height: 1.55,
-                  ),
+                color: const Color(0xFF334155),
+                height: 1.55,
+              ),
             ),
           ],
           if (hasReply) ...[
@@ -695,9 +690,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: const Color(0xFFBFDBFE),
-                ),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -731,19 +724,23 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   Text(
                     replyText,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF1E3A8A),
-                          height: 1.5,
-                        ),
+                      color: const Color(0xFF1E3A8A),
+                      height: 1.5,
+                    ),
                   ),
                 ],
               ),
             ),
-          ] else if (reviewId != null && reviewId.isNotEmpty) ...[
+          ] else if (widget.userRole == UserRole.wholesaler &&
+              reviewId != null &&
+              reviewId.isNotEmpty) ...[
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
-                onPressed: _isSubmitting ? null : () => _openReplyDialog(reviewId),
+                onPressed: _isSubmitting
+                    ? null
+                    : () => _openReplyDialog(reviewId),
                 icon: const Icon(Icons.reply_outlined),
                 label: const Text('Reply'),
               ),
@@ -766,7 +763,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: null,
-        onPressed: _isSubmitting ? null : _openAddReviewSheet,
+        onPressed: (widget.userRole == UserRole.retailer && !_isSubmitting)
+    ? _openAddReviewSheet
+    : null,
         backgroundColor: const Color(0xFF2563EB),
         foregroundColor: Colors.white,
         icon: _isSubmitting
@@ -796,9 +795,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       Expanded(
                         child: Text(
                           'Recent reviews',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ),
                       if (_reviewCount > 0)
@@ -810,9 +808,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: const Color(0xFFE2E8F0),
-                            ),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
                           ),
                           child: Text(
                             '$_reviewCount total',
@@ -828,7 +824,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   if (_reviews.isEmpty)
                     _buildEmptyState(context)
                   else
-                    ..._reviews.map((review) => _buildReviewCard(context, review)),
+                    ..._reviews.map(
+                      (review) => _buildReviewCard(context, review),
+                    ),
                 ],
               ),
             ),
@@ -861,20 +859,16 @@ class _AddReviewSheetState extends State<_AddReviewSheet> {
 
     if (reviewer.isEmpty || comment.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter name and comment'),
-        ),
+        const SnackBar(content: Text('Please enter name and comment')),
       );
       return;
     }
 
     FocusScope.of(context).unfocus();
 
-    Navigator.of(context).pop({
-      'reviewer': reviewer,
-      'comment': comment,
-      'rating': _rating,
-    });
+    Navigator.of(
+      context,
+    ).pop({'reviewer': reviewer, 'comment': comment, 'rating': _rating});
   }
 
   @override
@@ -882,7 +876,12 @@ class _AddReviewSheetState extends State<_AddReviewSheet> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Padding(
-      padding: EdgeInsets.only(top: 72, left: 12, right: 12, bottom: bottomInset),
+      padding: EdgeInsets.only(
+        top: 72,
+        left: 12,
+        right: 12,
+        bottom: bottomInset,
+      ),
       child: Material(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -918,9 +917,9 @@ class _AddReviewSheetState extends State<_AddReviewSheet> {
                 Text(
                   'A short review helps others make better decisions.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade600,
-                        height: 1.5,
-                      ),
+                    color: Colors.grey.shade600,
+                    height: 1.5,
+                  ),
                 ),
                 const SizedBox(height: 22),
                 TextField(
@@ -970,16 +969,15 @@ class _AddReviewSheetState extends State<_AddReviewSheet> {
                     children: [
                       Text(
                         'Rating',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         'Tap a star to rate the experience',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey.shade600,
-                            ),
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                       const SizedBox(height: 14),
                       Row(
@@ -1057,9 +1055,7 @@ class _HeaderStatTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.14),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.12),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
       child: Row(
         children: [
@@ -1070,11 +1066,7 @@ class _HeaderStatTile extends StatelessWidget {
               color: Colors.white.withOpacity(0.14),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 18,
-            ),
+            child: Icon(icon, color: Colors.white, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1092,10 +1084,7 @@ class _HeaderStatTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ),
