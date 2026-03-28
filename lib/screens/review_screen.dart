@@ -968,32 +968,136 @@ class _AddReviewSheetWithWholesalerState
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DropdownButtonFormField<Map<String, dynamic>>(
-            value: selected,
-            items: widget.wholesalers.map((w) {
-              return DropdownMenuItem(
-                value: w,
-                child: Text(w["shopName"] ?? w["name"]),
-              );
-            }).toList(),
-            onChanged: (val) => setState(() => selected = val),
-            decoration: const InputDecoration(labelText: "Select Wholesaler"),
+Widget build(BuildContext context) {
+  final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+  return Padding(
+    padding: EdgeInsets.only(
+      top: 80,
+      left: 12,
+      right: 12,
+      bottom: bottomInset,
+    ),
+    child: Material(
+      color: Colors.white,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      clipBehavior: Clip.antiAlias,
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+
+              // 🔥 TOP HANDLE
+              Center(
+                child: Container(
+                  width: 50,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
+              // 🔥 TITLE
+              const Text(
+                "Add Review",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // 🔥 DROPDOWN
+              DropdownButtonFormField<Map<String, dynamic>>(
+                value: selected,
+                items: widget.wholesalers.map((w) {
+                  return DropdownMenuItem(
+                    value: w,
+                    child: Text(w["shopName"] ?? w["name"]),
+                  );
+                }).toList(),
+                onChanged: (val) => setState(() => selected = val),
+                decoration: InputDecoration(
+                  labelText: "Select Wholesaler",
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              // 🔥 COMMENT BOX
+              TextField(
+                controller: _commentController,
+                minLines: 3,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  labelText: "Write your comment",
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // 🔥 RATING
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(5, (index) {
+                  final star = index + 1;
+                  return IconButton(
+                    onPressed: () => setState(() => _rating = star.toDouble()),
+                    icon: Icon(
+                      star <= _rating
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
+                      color: Colors.amber,
+                      size: 30,
+                    ),
+                  );
+                }),
+              ),
+
+              const SizedBox(height: 16),
+
+              // 🔥 SUBMIT BUTTON
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _submit,
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    "Submit Review",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _commentController,
-            decoration: const InputDecoration(labelText: "Comment"),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton(onPressed: _submit, child: const Text("Submit")),
-        ],
+        ),
       ),
-    );
-  }
-}
+    ),
+  );
+}}
