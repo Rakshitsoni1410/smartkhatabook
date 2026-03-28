@@ -143,6 +143,19 @@ class _ReviewScreenState extends State<ReviewScreen> {
     return '${local.day} ${months[local.month - 1]} ${local.year}';
   }
 
+  Future<List<Map<String, dynamic>>> _fetchWholesalers() async {
+    final uri = Uri.parse('$_baseUrl/user/wholesalers/${widget.businessType}');
+
+    final res = await http.get(uri);
+
+    if (res.statusCode != 200) {
+      throw Exception("Failed to load wholesalers");
+    }
+
+    final data = jsonDecode(res.body);
+    return List<Map<String, dynamic>>.from(data['users']);
+  }
+
   Future<void> _runSubmission(
     Future<void> Function() action, {
     required String successMessage,
@@ -217,43 +230,45 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   Future<void> _submitReview({
-  required String reviewer,
-  required String comment,
-  required double rating,
-}) async {
-  if (_baseUrl.isEmpty) {
-    throw Exception('BASE_URL is missing in .env');
+    required String reviewer,
+    required String comment,
+    required double rating,
+    required String targetUserId,
+  }) async {
+    if (_baseUrl.isEmpty) {
+      throw Exception('BASE_URL is missing in .env');
+    }
+
+    // ✅ ADD THIS BLOCK HERE
+    if (widget.userRole != UserRole.retailer) {
+      throw Exception("Only Retailer can add review");
+    }
+
+    final uri = Uri.parse('$_baseUrl/reviews/add');
+
+    final response = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'targetUserId': targetUserId,
+            'author': reviewer,
+            'comment': comment,
+            'rating': rating.round(),
+            'shopName': widget.shopName,
+            'businessType': widget.businessType,
+            'role': widget.userRole.label,
+          }),
+        )
+        .timeout(const Duration(seconds: 20));
+
+    final data = _decodeResponseBody(response.body);
+
+    if (response.statusCode != 201 && response.statusCode != 200) {
+      throw Exception(_extractMessage(data, 'Failed to save review'));
+    }
   }
 
-  // ✅ ADD THIS BLOCK HERE
-  if (widget.userRole != UserRole.retailer) {
-    throw Exception("Only Retailer can add review");
-  }
-
-  final uri = Uri.parse('$_baseUrl/reviews/add');
-
-  final response = await http
-      .post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'targetUserId': widget.userId,
-          'author': reviewer,
-          'comment': comment,
-          'rating': rating.round(),
-          'shopName': widget.shopName,
-          'businessType': widget.businessType,
-          'role': widget.userRole.label,
-        }),
-      )
-      .timeout(const Duration(seconds: 20));
-
-  final data = _decodeResponseBody(response.body);
-
-  if (response.statusCode != 201 && response.statusCode != 200) {
-    throw Exception(_extractMessage(data, 'Failed to save review'));
-  }
-}
   Future<void> _replyToReview(String reviewId, String text) async {
     if (_baseUrl.isEmpty) {
       throw Exception('BASE_URL is missing in .env');
@@ -280,20 +295,41 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   Future<void> _openAddReviewSheet() async {
+    List<Map<String, dynamic>> wholesalers = [];
+
+    try {
+      wholesalers = await _fetchWholesalers();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to load wholesalers")));
+      return;
+    }
+
+    Map<String, dynamic>? selectedWholesaler = wholesalers.isNotEmpty
+        ? wholesalers.first
+        : null;
+
     final reviewData = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const _AddReviewSheet(),
+      builder: (_) => _AddReviewSheetWithWholesaler(
+        wholesalers: wholesalers,
+        selectedWholesaler: selectedWholesaler,
+      ),
     );
 
     if (!mounted || reviewData == null) return;
 
+    final wholesalerId = reviewData['wholesalerId'];
+
     await _runSubmission(() async {
       await _submitReview(
-        reviewer: reviewData['reviewer'] as String,
-        comment: reviewData['comment'] as String,
-        rating: (reviewData['rating'] as num).toDouble(),
+        reviewer: widget.shopName,
+        comment: reviewData['comment'],
+        rating: reviewData['rating'],
+        targetUserId: wholesalerId, // 🔥 IMPORTANT
       );
       await _loadReviews();
     }, successMessage: 'Review added successfully');
@@ -555,8 +591,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
           const SizedBox(height: 18),
           ElevatedButton.icon(
             onPressed: (widget.userRole == UserRole.retailer && !_isSubmitting)
-    ? _openAddReviewSheet
-    : null,
+                ? _openAddReviewSheet
+                : null,
             icon: const Icon(Icons.add_comment_outlined),
             label: const Text('Write first review'),
           ),
@@ -764,8 +800,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
       floatingActionButton: FloatingActionButton.extended(
         heroTag: null,
         onPressed: (widget.userRole == UserRole.retailer && !_isSubmitting)
-    ? _openAddReviewSheet
-    : null,
+            ? _openAddReviewSheet
+            : null,
         backgroundColor: const Color(0xFF2563EB),
         foregroundColor: Colors.white,
         icon: _isSubmitting
@@ -834,208 +870,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 }
 
-class _AddReviewSheet extends StatefulWidget {
-  const _AddReviewSheet();
-
-  @override
-  State<_AddReviewSheet> createState() => _AddReviewSheetState();
-}
-
-class _AddReviewSheetState extends State<_AddReviewSheet> {
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _commentController = TextEditingController();
-  double _rating = 4;
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _commentController.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final reviewer = _nameController.text.trim();
-    final comment = _commentController.text.trim();
-
-    if (reviewer.isEmpty || comment.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter name and comment')),
-      );
-      return;
-    }
-
-    FocusScope.of(context).unfocus();
-
-    Navigator.of(
-      context,
-    ).pop({'reviewer': reviewer, 'comment': comment, 'rating': _rating});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-
-    return Padding(
-      padding: EdgeInsets.only(
-        top: 72,
-        left: 12,
-        right: 12,
-        bottom: bottomInset,
-      ),
-      child: Material(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        clipBehavior: Clip.antiAlias,
-        child: SafeArea(
-          top: false,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFCBD5E1),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Share your review',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'A short review helps others make better decisions.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade600,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 22),
-                TextField(
-                  controller: _nameController,
-                  textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
-                    labelText: 'Your name',
-                    prefixIcon: const Icon(Icons.person_outline),
-                    filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _commentController,
-                  minLines: 3,
-                  maxLines: 5,
-                  decoration: InputDecoration(
-                    labelText: 'Your comment',
-                    alignLabelWithHint: true,
-                    prefixIcon: const Padding(
-                      padding: EdgeInsets.only(bottom: 54),
-                      child: Icon(Icons.mode_comment_outlined),
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Rating',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Tap a star to rate the experience',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: List.generate(5, (index) {
-                          final starValue = index + 1;
-                          final isActive = starValue <= _rating;
-
-                          return InkWell(
-                            borderRadius: BorderRadius.circular(999),
-                            onTap: () {
-                              setState(() => _rating = starValue.toDouble());
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Icon(
-                                isActive
-                                    ? Icons.star_rounded
-                                    : Icons.star_border_rounded,
-                                color: isActive
-                                    ? Colors.amber
-                                    : const Color(0xFF94A3B8),
-                                size: 34,
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${_rating.toInt()}/5 selected',
-                        style: const TextStyle(
-                          color: Color(0xFF475569),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 22),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    onPressed: _submit,
-                    icon: const Icon(Icons.rate_review_outlined),
-                    label: const Text('Submit review'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _HeaderStatTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1089,6 +923,75 @@ class _HeaderStatTile extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddReviewSheetWithWholesaler extends StatefulWidget {
+  final List<Map<String, dynamic>> wholesalers;
+  final Map<String, dynamic>? selectedWholesaler;
+
+  const _AddReviewSheetWithWholesaler({
+    required this.wholesalers,
+    required this.selectedWholesaler,
+  });
+
+  @override
+  State<_AddReviewSheetWithWholesaler> createState() =>
+      _AddReviewSheetWithWholesalerState();
+}
+
+class _AddReviewSheetWithWholesalerState
+    extends State<_AddReviewSheetWithWholesaler> {
+  final TextEditingController _commentController = TextEditingController();
+  double _rating = 4;
+  Map<String, dynamic>? selected;
+
+  @override
+  void initState() {
+    super.initState();
+    selected = widget.selectedWholesaler;
+  }
+
+  void _submit() {
+    final comment = _commentController.text.trim();
+
+    if (comment.isEmpty || selected == null) return;
+
+    Navigator.pop(context, {
+      'comment': comment,
+      'rating': _rating,
+      'wholesalerId': selected!["_id"],
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonFormField<Map<String, dynamic>>(
+            value: selected,
+            items: widget.wholesalers.map((w) {
+              return DropdownMenuItem(
+                value: w,
+                child: Text(w["shopName"] ?? w["name"]),
+              );
+            }).toList(),
+            onChanged: (val) => setState(() => selected = val),
+            decoration: const InputDecoration(labelText: "Select Wholesaler"),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _commentController,
+            decoration: const InputDecoration(labelText: "Comment"),
+          ),
+          const SizedBox(height: 10),
+          ElevatedButton(onPressed: _submit, child: const Text("Submit")),
         ],
       ),
     );
