@@ -141,164 +141,398 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
       ),
     );
   }
+// ===============================
+// UPDATED EMPLOYEE CARD UI
+// Replace ONLY _employeeCard()
+// ===============================
 
-  Widget _employeeCard(Map<String, dynamic> emp) {
-    final String name = emp["name"]?.toString() ?? "";
-    final String phone = emp["phone"]?.toString() ?? "";
-    final String category = emp["category"]?.toString() ?? "Other";
-    final double salary = (emp["salary"] as num?)?.toDouble() ?? 0;
-    final int salaryDate = emp["salaryDate"] ?? 1;
-    final Color categoryColor = getCategoryColor(category);
+Widget _employeeCard(Map<String, dynamic> emp) {
+  final String name = emp["name"]?.toString() ?? "";
+  final String phone = emp["phone"]?.toString() ?? "";
+  final String category = emp["category"]?.toString() ?? "Other";
+  final double salary = (emp["salary"] as num?)?.toDouble() ?? 0;
+  final int salaryDate = emp["salaryDate"] ?? 1;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 8),
-          ),
-        ],
+  final List payments =
+      List<Map<String, dynamic>>.from(emp["payments"] ?? []);
+
+  final double totalPaid = payments.fold<double>(
+    0,
+    (sum, p) => sum + ((p["amount"] ?? 0) as num).toDouble(),
+  );
+
+  final double pendingSalary = salary - totalPaid;
+
+  final double progress =
+      salary <= 0 ? 0 : (totalPaid / salary).clamp(0.0, 1.0);
+
+  final Color categoryColor = getCategoryColor(category);
+
+  final bool isPending = pendingSalary > 0;
+
+  return Container(
+    margin: const EdgeInsets.only(bottom: 14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(
+        color: isPending
+            ? Colors.orange.withOpacity(0.25)
+            : Colors.green.withOpacity(0.15),
+        width: 1.2,
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => EmployeeDetail(employee: emp),
-            ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 56,
-                width: 56,
-                decoration: BoxDecoration(
-                  color: categoryColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  getCategoryIcon(category),
-                  color: categoryColor,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.04),
+          blurRadius: 14,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    ),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EmployeeDetail(employee: emp),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // =====================
+                // AVATAR
+                // =====================
+
+                Container(
+                  height: 62,
+                  width: 62,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        categoryColor,
+                        categoryColor.withOpacity(0.7),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Center(
+                    child: Text(
+                      name.isNotEmpty
+                          ? name[0].toUpperCase()
+                          : "?",
                       style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      phone,
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontWeight: FontWeight.w500,
+                  ),
+                ),
+
+                const SizedBox(width: 14),
+
+                // =====================
+                // INFO
+                // =====================
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+
+                          // STATUS CHIP
+
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isPending
+                                  ? Colors.orange
+                                      .withOpacity(0.12)
+                                  : Colors.green
+                                      .withOpacity(0.12),
+                              borderRadius:
+                                  BorderRadius.circular(30),
+                            ),
+                            child: Text(
+                              isPending
+                                  ? "Pending"
+                                  : "Paid",
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isPending
+                                    ? Colors.orange
+                                    : Colors.green,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: categoryColor.withOpacity(0.10),
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Text(
-                            category,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: categoryColor,
+
+                      const SizedBox(height: 6),
+
+                      Text(
+                        phone,
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          Container(
+                            padding:
+                                const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: categoryColor
+                                  .withOpacity(0.10),
+                              borderRadius:
+                                  BorderRadius.circular(30),
+                            ),
+                            child: Text(
+                              category,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: categoryColor,
+                              ),
                             ),
                           ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.10),
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Text(
-                            "Pay on $salaryDate",
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.green,
+
+                          Container(
+                            padding:
+                                const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue
+                                  .withOpacity(0.10),
+                              borderRadius:
+                                  BorderRadius.circular(30),
+                            ),
+                            child: Text(
+                              "Pay on $salaryDate",
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // MENU
+
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (val) {
+                    if (val == "edit") {
+                      openEmployeeForm(employee: emp);
+                    } else if (val == "delete") {
+                      setState(() {
+                        employees.remove(emp);
+                      });
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: "edit",
+                      child: Text("Edit"),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _miniInfo(
-                            title: "Salary",
-                            value: formatCurrency(salary),
-                            color: const Color(0xff1E88E5),
-                          ),
-                        ),
-                      ],
+                    PopupMenuItem(
+                      value: "delete",
+                      child: Text("Delete"),
                     ),
                   ],
                 ),
-              ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                onSelected: (val) {
-                  if (val == "edit") {
-                    openEmployeeForm(employee: emp);
-                  } else if (val == "delete") {
-                    setState(() {
-                      employees.remove(emp);
-                    });
-                  }
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(
-                    value: "edit",
-                    child: Text("Edit"),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // =====================
+            // SALARY INFO
+            // =====================
+
+            Row(
+              children: [
+                Expanded(
+                  child: _miniInfo(
+                    title: "Salary",
+                    value: formatCurrency(salary),
+                    color: const Color(0xff2563EB),
                   ),
-                  PopupMenuItem(
-                    value: "delete",
-                    child: Text("Delete"),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _miniInfo(
+                    title: "Paid",
+                    value: formatCurrency(totalPaid),
+                    color: Colors.green,
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _miniInfo(
+                    title: "Pending",
+                    value: formatCurrency(
+                      pendingSalary < 0
+                          ? 0
+                          : pendingSalary,
+                    ),
+                    color: isPending
+                        ? Colors.orange
+                        : Colors.green,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // =====================
+            // PROGRESS BAR
+            // =====================
+
+            Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Salary Progress",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      "${(progress * 100).toStringAsFixed(0)}%",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isPending
+                            ? Colors.orange
+                            : Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                ClipRRect(
+                  borderRadius:
+                      BorderRadius.circular(20),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 9,
+                    backgroundColor:
+                        Colors.grey.shade200,
+                    valueColor:
+                        AlwaysStoppedAnimation(
+                      isPending
+                          ? Colors.orange
+                          : Colors.green,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // =====================
+            // QUICK ACTIONS
+            // =====================
+
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.call),
+                    label: const Text("Call"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor:
+                          const Color(0xff2563EB),
+                      side: BorderSide(
+                        color: Colors.blue.shade100,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.payments),
+                    label: const Text("Pay"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          const Color(0xff2563EB),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-    );
-  }
-
+    ),
+  );
+}
   Widget _miniInfo({
     required String title,
     required String value,
