@@ -74,7 +74,6 @@ Material Design	UI Design
 MongoDB	Planned Backend Database
 Node.js	Backend API
 Express.js	Server Framework
-📂 Project Structure
 lib/
 │
 ├── main.dart
