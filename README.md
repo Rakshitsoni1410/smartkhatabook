@@ -1,109 +1,217 @@
-# Smart Khata 📒  
-### Digital Ledger Mobile Application (Flutter)
+Smart Khata 📒
 
-Smart Khata is a mobile-based digital ledger application developed using **Flutter**.  
-The application helps **small business owners (shopkeepers)** manage customer records and credit/debit transactions digitally, while allowing **customers** to view their ledger details.
+A modern Digital Ledger & Employee Management Mobile Application built using Flutter for small business owners to manage customers, transactions, salaries, and daily records digitally.
 
-This project is developed as a **Mini Project for MCA Semester 2**.
+Smart Khata replaces the traditional paper khata book with a smart, fast, and user-friendly mobile solution.
 
----
+🔗 Project Repository
+Frontend Repository
 
-## 📌 Project Features
+Smart Khata GitHub Repository
 
-### 🔐 Authentication
-- Single **Signup screen** with role selection (Shopkeeper / Customer)
-- **Role-based Login**
-- Different dashboards based on user role
+Backend Repository
 
-### 👨‍💼 Shopkeeper (Owner) Features
-- Add new customers
-- View customer list
-- Add credit (+) and debit (–) transactions
-- Digital replacement of traditional khata book
-- Simple and user-friendly interface
+Smart Khata Backend Repository
 
-### 👤 Customer Features
-- Separate customer dashboard
-- View ledger details (basic)
-- Transparent record access
-
-### 🎨 UI & UX
-- Splash screen with app branding
-- Icon-based logo (no image assets)
-- Clean and modern Material UI
-- Bottom navigation for easy access
-
----
-
-## 🛠️ Technology Stack
-
-- **Frontend:** Flutter (Dart)
-- **backend:** mongodb https://github.com/Rakshitsoni1410/backend-of-smartkhata-book
-- **Platform:** Android
-- **UI Framework:** Material Design
-- **State Management:** Basic Stateful & Stateless Widgets
-- **Database:** Not connected yet (Dummy/local data for demo)
-
----
-
-## 📂 Project Structure
-
+✨ Features
+🔐 Authentication System
+Role-Based Login
+Shopkeeper & Customer Access
+Secure Authentication UI
+User Registration Screen
+Login Validation
+👨‍💼 Shopkeeper Features
+Add New Customers
+View Customer List
+Credit & Debit Transactions
+Digital Ledger Management
+Employee Management System
+Salary Tracking
+Payment History
+Pending Salary Monitoring
+Search & Filter Employees
+Modern Dashboard UI
+👤 Customer Features
+Customer Dashboard
+Ledger View Access
+Transaction Transparency
+Clean User Interface
+👨‍💻 Employee Management Module
+Included Features
+Add Employee
+Edit Employee
+Delete Employee
+Salary Management
+Pending Salary Tracking
+Salary Progress Indicator
+Employee Categories
+Payment Status Chips
+Employee Detail Screen
+Salary Pay Date Tracking
+🏷️ Employee Categories
+Cashier
+Salesman
+Delivery Boy
+Manager
+Other
+🎨 UI & UX Features
+Splash Screen
+Modern Material Design
+Gradient UI Components
+Dark Mode Support
+Responsive Layout
+Bottom Navigation
+Beautiful Employee Cards
+Interactive Progress Bars
+Clean Dashboard Design
+Animated UI Feel
+🛠️ Tech Stack
+Technology	Usage
+Flutter	Frontend Framework
+Dart	Programming Language
+SharedPreferences	Local Storage
+Material Design	UI Design
+MongoDB	Planned Backend Database
+Node.js	Backend API
+Express.js	Server Framework
+📂 Project Structure
 lib/
+│
 ├── main.dart
-└── screens/
-├── splash_screen.dart
-├── home_screen.dart
-├── signup_screen.dart
-├── login_screen.dart
-├── owner_dashboard.dart
-├── customer_dashboard.dart
-├── add_customer_screen.dart
-├── customer_list_screen.dart
-└── add_transaction_screen.dart
+│
+├── screens/
+│   ├── splash_screen.dart
+│   ├── home_screen.dart
+│   ├── signup_screen.dart
+│   ├── login_screen.dart
+│   ├── owner_dashboard.dart
+│   ├── customer_dashboard.dart
+│   ├── add_customer_screen.dart
+│   ├── customer_list_screen.dart
+│   ├── add_transaction_screen.dart
+│   ├── employee_screen.dart
+│   └── employee_detail_screen.dart
+│
+├── widgets/
+│   ├── employee_card.dart
+│   ├── summary_card.dart
+│   └── custom_button.dart
+│
+└── services/
+    └── local_storage_service.dart
+🚀 Getting Started
+1️⃣ Install Flutter SDK
 
+Download Flutter SDK from:
 
----
+Flutter Official Website
 
-## 🚀 How to Run the Project
+2️⃣ Clone Repository
+git clone https://github.com/Rakshitsoni1410/smartkhatabook.git
+3️⃣ Open Project
+cd smartkhatabook
+4️⃣ Install Dependencies
+flutter pub get
+5️⃣ Run Application
+flutter run
+📦 Dependencies Used
 
-1. Install **Flutter SDK**
-2. Set up **Android Studio** and Android Emulator
-3. Clone the repository:
-   ```bash
-   git clone <your-repo-url>
-Navigate to project folder:
+Add these dependencies inside pubspec.yaml:
 
-cd smart_khata
-Get dependencies:
+dependencies:
+  flutter:
+    sdk: flutter
+
+  shared_preferences: ^2.2.2
+
+Then run:
 
 flutter pub get
-Run the app:
+💾 Local Storage
 
-flutter run
-🎓 Academic Details
-Course: MCA
+Currently the application uses:
 
-Semester: 2
+SharedPreferences
+Local JSON Storage
+Dummy Data System
 
-Project Type: Group Mini Project
+for offline demo functionality.
 
-Purpose: Academic Submission
+🌐 Backend Integration
 
+Backend Repository:
+
+Node.js Backend API
+
+Planned Backend Features
+MongoDB Database
+JWT Authentication
+REST APIs
+Cloud Storage
+Real-Time Sync
+Secure Login System
+📱 Screens Included
+Splash Screen
+Signup Screen
+Login Screen
+Owner Dashboard
+Customer Dashboard
+Customer List Screen
+Add Transaction Screen
+Employee Management Screen
+Employee Detail Screen
 🔮 Future Enhancements
-Backend integration using Node.js & MongoDB
-
-Secure authentication with JWT / Firebase
-
-Payment reminders and notifications
-
-Graphical spending analysis for customers
-
-Cloud data storage
-
+Firebase Authentication
+Online Database Sync
+Payment Notifications
+PDF Invoice Generation
+Analytics Dashboard
+Expense Reports
+Cloud Backup
+Multi-Shop Management
+Graphical Reports
+Salary Reminder Notifications
+🎓 Academic Information
+Detail	Information
+Course	MCA
+Semester	2
+Project Type	Group Mini Project
+Platform	Android
+Framework	Flutter
 👥 Team Contribution
-This project is developed as a group project, with responsibilities divided among team members for frontend development, logic implementation, UI design, and documentation.
 
-📝 Conclusion
-Smart Khata provides a simple, digital solution to manage daily financial records for small businesses.
-The application reduces manual errors, improves transparency, and offers a user-friendly alternative to traditional paper-based khata books.
+This project was developed as a group project with responsibilities divided among members for:
 
+Flutter Development
+UI/UX Design
+Logic Implementation
+Backend Planning
+Documentation
+Testing
+📝 Project Objective
+
+Smart Khata aims to digitize small business bookkeeping systems by replacing traditional handwritten khata books with a mobile-based solution.
+
+The app improves:
+
+Record Management
+Financial Transparency
+Employee Tracking
+Business Efficiency
+Data Organization
+❤️ Developed With
+Flutter
+Dart
+Material Design
+SharedPreferences
+📄 License
+
+This project is developed for educational and academic purposes only.
+
+⭐ Support
+
+If you like this project, give it a ⭐ on GitHub.
+
+Repository Link
+
+Smart Khata Project Repository
