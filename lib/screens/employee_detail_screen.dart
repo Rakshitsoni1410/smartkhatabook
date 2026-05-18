@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EmployeeDetail extends StatefulWidget {
   final Map<String, dynamic> employee;
@@ -16,6 +22,8 @@ class EmployeeDetail extends StatefulWidget {
 class _EmployeeDetailState extends State<EmployeeDetail> {
   late List<Map<String, dynamic>> payments;
   late List<Map<String, dynamic>> _attendance;
+  bool isDark = false;
+  File? selectedImage;
 
   @override
   void initState() {
@@ -117,6 +125,81 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
     }
   }
 
+  Future<void> generateReceipt(
+    Map<String, dynamic> payment,
+  ) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        build: (context) {
+          return pw.Padding(
+            padding: const pw.EdgeInsets.all(20),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'Salary Receipt',
+                  style: pw.TextStyle(
+                    fontSize: 28,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 30),
+                pw.Text(
+                  'Employee: ${widget.employee['name']}',
+                ),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  'Amount: ₹${payment['amount']}',
+                ),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  'Method: ${payment['method']}',
+                ),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  'Date: ${payment['date']}',
+                ),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  'Note: ${payment['note'] ?? 'N/A'}',
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => pdf.save(),
+    );
+  }
+
+  Future<void> pickImage() async {
+    final picker = ImagePicker();
+
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+    );
+
+    if (image != null) {
+      setState(() {
+        selectedImage = File(image.path);
+      });
+    }
+  }
+
+  Future<void> saveEmployees() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString(
+      'employees',
+      jsonEncode(widget.employee),
+    );
+  }
+
   Future<void> openPaySheet() async {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
@@ -132,6 +215,8 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
 
     setState(() {
       payments.add(result);
+      widget.employee["payments"] = payments;
+      saveEmployees();
     });
   }
 
@@ -334,14 +419,15 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
                       ),
                       onPressed: () {
                         setState(() {
-                          attendance.insert(0, {
+                          _attendance.insert(0, {
                             "date": DateTime.now()
                                 .toString()
                                 .split(" ")[0],
                             "status": selectedStatus,
                           });
 
-                          widget.employee["attendance"] = attendance;
+                          widget.employee["attendance"] = _attendance;
+                          
                         });
 
                         Navigator.pop(context);
@@ -425,7 +511,7 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
     final String status = emp['status'] ?? 'Active';
 
     return Scaffold(
-      backgroundColor: const Color(0xffF5F7FB),
+      backgroundColor: isDark ? Colors.grey[900] : const Color(0xffF5F7FB),
 
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -459,6 +545,20 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
             pinned: true,
             backgroundColor: const Color(0xff2563EB),
             foregroundColor: Colors.white,
+            actions: [
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    isDark = !isDark;
+                  });
+                },
+                icon: Icon(
+                  isDark
+                      ? Icons.light_mode
+                      : Icons.dark_mode,
+                ),
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: const BoxDecoration(
@@ -480,16 +580,25 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
                       children: [
                         Row(
                           children: [
-                            CircleAvatar(
-                              radius: 34,
-                              backgroundColor: Colors.white24,
-                              child: Text(
-                                name.isEmpty ? 'E' : name[0],
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            GestureDetector(
+                              onTap: pickImage,
+                              child: CircleAvatar(
+                                radius: 34,
+                                backgroundColor: Colors.white24,
+                                backgroundImage:
+                                    selectedImage != null
+                                        ? FileImage(selectedImage!)
+                                        : null,
+                                child: selectedImage == null
+                                    ? Text(
+                                        name.isEmpty ? 'E' : name[0],
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      )
+                                    : null,
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -663,7 +772,11 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
                               icon: Icons.picture_as_pdf_outlined,
                               label: 'Receipt',
                               color: Colors.red,
-                              onTap: () {},
+                              onTap: () {
+                                if (payments.isNotEmpty) {
+                                  generateReceipt(payments.last);
+                                }
+                              },
                             ),
                             _actionButton(
                               icon: Icons.edit_outlined,
@@ -751,6 +864,15 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
                                           color: Colors.grey,
                                         ),
                                       ),
+                                      Text(
+                                        p['date']
+                                            .toString()
+                                            .split(' ')[0],
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
                                       if ((p['note'] ?? '')
                                           .toString()
                                           .isNotEmpty)
@@ -767,6 +889,18 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
                                     ],
                                   ),
                                 ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      payments.remove(p);
+                                      saveEmployees();
+                                    });
+                                  },
+                                )
                               ],
                             ),
                           );
@@ -790,7 +924,7 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
 
                   const SizedBox(height: 12),
 
-                  attendance.isEmpty
+                  _attendance.isEmpty
                       ? Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(20),
@@ -816,7 +950,7 @@ class _EmployeeDetailState extends State<EmployeeDetail> {
                           ),
                         )
                       : Column(
-                          children: attendance.map((a) {
+                          children: _attendance.map((a) {
                             return attendanceCard(
                               date: a["date"] ?? "",
                               status: a["status"] ?? "",
@@ -977,6 +1111,8 @@ class _PaySalarySheetState extends State<_PaySalarySheet> {
                     'method': method,
                     'note': noteCtrl.text.trim(),
                     'date': DateTime.now().toString(),
+                    'month': DateTime.now().month,
+                    'year': DateTime.now().year,
                   });
                 },
                 icon: const Icon(Icons.check_circle_outline),

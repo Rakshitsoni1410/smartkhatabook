@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'employee_detail_screen.dart';
-
+import 'package:url_launcher/url_launcher.dart';
 class EmployeeScreen extends StatefulWidget {
   const EmployeeScreen({super.key});
 
@@ -11,25 +13,69 @@ class EmployeeScreen extends StatefulWidget {
 
 class _EmployeeScreenState extends State<EmployeeScreen> {
   String searchText = "";
+  String selectedFilter = 'All';
+  bool isDark = false;
 
-  List<Map<String, dynamic>> employees = [
-    {
-      "name": "Rahul Sharma",
-      "phone": "9876543210",
-      "category": "Salesman",
-      "salary": 15000.0,
-      "salaryDate": 5,
-      "notes": "",
-      "payments": <Map<String, dynamic>>[],
+  List<Map<String, dynamic>> employees = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadEmployees();
+  }
+  Future<void> callEmployee(String phone) async {
+  final Uri uri = Uri.parse("tel:$phone");
+
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri);
+  }
+}
+
+Future<void> openEmployeeDetail(Map<String, dynamic> emp) async {
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => EmployeeDetail(employee: emp),
+    ),
+  );
+
+  setState(() {});
+  saveEmployees();
+}
+  Future<void> saveEmployees() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'employees',
+      jsonEncode(employees),
+    );
+  }
+
+  Future<void> loadEmployees() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString('employees');
+
+    if (data != null) {
+      setState(() {
+        employees = List<Map<String, dynamic>>.from(
+          jsonDecode(data),
+        );
+      });
     }
-  ];
+  }
 
   List<Map<String, dynamic>> get filteredEmployees {
     return employees.where((emp) {
       final name = (emp["name"] ?? "").toString().toLowerCase();
       final phone = (emp["phone"] ?? "").toString();
-      return name.contains(searchText.toLowerCase()) ||
+      final category = (emp["category"] ?? "").toString();
+
+      final matchesSearch = name.contains(searchText.toLowerCase()) ||
           phone.contains(searchText);
+
+      final matchesCategory =
+          selectedFilter == 'All' || category == selectedFilter;
+
+      return matchesSearch && matchesCategory;
     }).toList();
   }
 
@@ -83,11 +129,13 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
 
     setState(() {
       if (isEdit) {
-        employee!.addAll(updated);
+        employee.addAll(updated);
       } else {
         employees.add(updated);
       }
     });
+
+    saveEmployees();
   }
 
   Widget _summaryCard({
@@ -191,14 +239,7 @@ Widget _employeeCard(Map<String, dynamic> emp) {
     ),
     child: InkWell(
       borderRadius: BorderRadius.circular(22),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => EmployeeDetail(employee: emp),
-          ),
-        );
-      },
+      onTap: () => openEmployeeDetail(emp),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -369,6 +410,7 @@ Widget _employeeCard(Map<String, dynamic> emp) {
                       setState(() {
                         employees.remove(emp);
                       });
+                      saveEmployees();
                     }
                   },
                   itemBuilder: (_) => const [
@@ -489,7 +531,7 @@ Widget _employeeCard(Map<String, dynamic> emp) {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => callEmployee(phone),
                     icon: const Icon(Icons.call),
                     label: const Text("Call"),
                     style: OutlinedButton.styleFrom(
@@ -510,7 +552,7 @@ Widget _employeeCard(Map<String, dynamic> emp) {
 
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                 onPressed: () => openEmployeeDetail(emp),
                     icon: const Icon(Icons.payments),
                     label: const Text("Pay"),
                     style: ElevatedButton.styleFrom(
@@ -571,12 +613,25 @@ Widget _employeeCard(Map<String, dynamic> emp) {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xffF5F7FB),
+      backgroundColor:
+    isDark ? const Color(0xff111827) : const Color(0xffF5F7FB),
       appBar: AppBar(
         title: const Text("Employees"),
         backgroundColor: const Color(0xff2563EB),
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () {
+              setState(() {
+                isDark = !isDark;
+              });
+            },
+            icon: Icon(
+              isDark ? Icons.light_mode : Icons.dark_mode,
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: null,
@@ -678,7 +733,7 @@ Widget _employeeCard(Map<String, dynamic> emp) {
                 hintText: "Search employee...",
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
-                fillColor: Colors.white,
+               fillColor: isDark ? const Color(0xff1F2937) : Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide.none,
@@ -688,7 +743,50 @@ Widget _employeeCard(Map<String, dynamic> emp) {
                 setState(() => searchText = val);
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  'All',
+                  'Salesman',
+                  'Cashier',
+                  'Manager',
+                  'Delivery Boy',
+                ]
+                    .map((category) {
+                      final bool isSelected =
+                          selectedFilter == category;
+                      return Padding(
+                        padding:
+                            const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          selected: isSelected,
+                          label: Text(category),
+                          onSelected: (value) {
+                            setState(() {
+                              selectedFilter = category;
+                            });
+                          },
+                          backgroundColor:
+                              isDark ? const Color(0xff1F2937) : Colors.white,
+                          selectedColor:
+                              const Color(0xff2563EB)
+                                  .withOpacity(0.2),
+                          labelStyle: TextStyle(
+                            color: isSelected
+                                ? const Color(0xff2563EB)
+                                : Colors.grey,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      );
+                    })
+                    .toList(),
+              ),
+            ),
             Expanded(
               child: filteredEmployees.isEmpty
                   ? Center(
@@ -814,7 +912,9 @@ class _EmployeeFormSheetState extends State<_EmployeeFormSheet> {
       "salary": double.tryParse(_salaryCtrl.text) ?? 0,
       "salaryDate": _salaryDate,
       "notes": _notesCtrl.text.trim(),
-      "payments": widget.employee?["payments"] ?? <Map<String, dynamic>>[],
+     "payments": widget.employee?["payments"] ?? [],
+"attendance": widget.employee?["attendance"] ?? [],
+"status": widget.employee?["status"] ?? "Active",
     });
   }
 
