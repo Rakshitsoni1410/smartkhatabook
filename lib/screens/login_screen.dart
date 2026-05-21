@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-
+import 'forgot_password_screen.dart';
 import '../models/user_role.dart';
 import 'owner_dashboard.dart';
 import 'signup_screen.dart';
@@ -33,13 +33,12 @@ class _LoginScreenState extends State<LoginScreen> {
           message,
           style: const TextStyle(fontWeight: FontWeight.w500),
         ),
-        backgroundColor:
-            isError ? Colors.red.shade600 : const Color(0xff2EA3F2),
+        backgroundColor: isError
+            ? Colors.red.shade600
+            : const Color(0xff2EA3F2),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -76,24 +75,39 @@ class _LoginScreenState extends State<LoginScreen> {
       if (resp.statusCode == 200) {
         _showMessage(data['message'] ?? "Login successful");
 
+        // SAVE TOKEN
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+
+        await prefs.setString("token", data["token"] ?? "");
+
+        // SAVE USER DATA
+        await prefs.setString("user", jsonEncode(data["user"]));
+
         final user = data['user'];
 
         final userId = user?['_id']?.toString() ?? '';
+
         final userName = user?['name']?.toString() ?? '';
+
         final shopName = user?['shopName']?.toString() ?? '';
+
         final businessType = user?['businessType']?.toString() ?? '';
+
         final roleValue = user?['role'];
 
         if (userId.isEmpty) {
           _showMessage("User details missing in login response", isError: true);
+
           return;
         }
 
         late final UserRole parsedRole;
+
         try {
           parsedRole = parseUserRole(roleValue);
         } catch (e) {
           _showMessage("Invalid user role: $roleValue", isError: true);
+
           return;
         }
 
@@ -142,22 +156,15 @@ class _LoginScreenState extends State<LoginScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(
-          color: isDark ? Colors.white12 : Colors.black12,
-        ),
+        borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(
-          color: isDark ? Colors.white12 : Colors.black12,
-        ),
+        borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Color(0xff2EA3F2),
-          width: 1.5,
-        ),
+        borderSide: const BorderSide(color: Color(0xff2EA3F2), width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -179,8 +186,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final bgColor = isDark ? const Color(0xff0D1117) : const Color(0xffF4F7FB);
     final cardColor = isDark ? const Color(0xff161B22) : Colors.white;
-    final titleColor =
-        isDark ? const Color(0xff2EA3F2) : const Color(0xff1565C0);
+    final titleColor = isDark
+        ? const Color(0xff2EA3F2)
+        : const Color(0xff1565C0);
     final subtitleColor = isDark ? Colors.white60 : Colors.black54;
     final textColor = isDark ? Colors.white : Colors.black87;
     final borderColor = isDark
@@ -344,6 +352,31 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const SizedBox(height: 18),
+                          Align(
+                            alignment: Alignment.centerRight,
+
+                            child: TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ForgotPasswordScreen(),
+                                  ),
+                                );
+                              },
+
+                              child: const Text(
+                                "Forgot Password?",
+
+                                style: TextStyle(
+                                  color: Color(0xff2EA3F2),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
