@@ -45,10 +45,7 @@ class _ProductScreenState extends State<ProductScreen> {
 
   Future<void> loadAllData() async {
     setState(() => isLoading = true);
-    await Future.wait([
-      loadSuggestions(),
-      loadProducts(),
-    ]);
+    await Future.wait([loadSuggestions(), loadProducts()]);
     if (mounted) {
       setState(() => isLoading = false);
     }
@@ -64,8 +61,8 @@ class _ProductScreenState extends State<ProductScreen> {
 
       if (resp.statusCode == 200 && data["success"] == true) {
         setState(() {
-          businessType = (data["businessType"]?.toString().trim().isNotEmpty ??
-                  false)
+          businessType =
+              (data["businessType"]?.toString().trim().isNotEmpty ?? false)
               ? data["businessType"].toString().trim()
               : businessType;
           suggestions = List<Map<String, dynamic>>.from(
@@ -83,9 +80,9 @@ class _ProductScreenState extends State<ProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Suggestions error: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Suggestions error: $e")));
       }
     }
   }
@@ -113,9 +110,9 @@ class _ProductScreenState extends State<ProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Products error: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Products error: $e")));
       }
     }
   }
@@ -158,9 +155,9 @@ class _ProductScreenState extends State<ProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Add product failed: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Add product failed: $e")));
       }
     }
   }
@@ -197,9 +194,9 @@ class _ProductScreenState extends State<ProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Update failed: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Update failed: $e")));
       }
     }
   }
@@ -228,9 +225,9 @@ class _ProductScreenState extends State<ProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Delete failed: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Delete failed: $e")));
       }
     }
   }
@@ -247,8 +244,9 @@ class _ProductScreenState extends State<ProductScreen> {
 
   void openAddProductForm() {
     final TextEditingController nameCtrl = TextEditingController();
-    final TextEditingController categoryCtrl =
-        TextEditingController(text: businessType);
+    final TextEditingController categoryCtrl = TextEditingController(
+      text: businessType,
+    );
     final TextEditingController descCtrl = TextEditingController();
     final TextEditingController purchaseCtrl = TextEditingController();
     final TextEditingController sellingCtrl = TextEditingController();
@@ -274,7 +272,7 @@ class _ProductScreenState extends State<ProductScreen> {
       "piece",
       "pack",
       "dozen",
-      "strip"
+      "strip",
     ];
 
     showModalBottomSheet(
@@ -336,7 +334,7 @@ class _ProductScreenState extends State<ProductScreen> {
                         IconButton(
                           icon: const Icon(Icons.close),
                           onPressed: () => Navigator.pop(context),
-                        )
+                        ),
                       ],
                     ),
                     if (suggestions.isNotEmpty) ...[
@@ -478,10 +476,7 @@ class _ProductScreenState extends State<ProductScreen> {
                         value: weightUnit,
                         items: weightUnits
                             .map(
-                              (u) => DropdownMenuItem(
-                                value: u,
-                                child: Text(u),
-                              ),
+                              (u) => DropdownMenuItem(value: u, child: Text(u)),
                             )
                             .toList(),
                         onChanged: (val) {
@@ -508,8 +503,9 @@ class _ProductScreenState extends State<ProductScreen> {
                         child: const Text("Add Product"),
                         onPressed: () {
                           setModalState(() {
-                            nameError =
-                                nameCtrl.text.trim().isEmpty ? "Required" : null;
+                            nameError = nameCtrl.text.trim().isEmpty
+                                ? "Required"
+                                : null;
                             categoryError = categoryCtrl.text.trim().isEmpty
                                 ? "Required"
                                 : null;
@@ -519,8 +515,9 @@ class _ProductScreenState extends State<ProductScreen> {
                             sellingError = sellingCtrl.text.trim().isEmpty
                                 ? "Required"
                                 : null;
-                            stockError =
-                                stockCtrl.text.trim().isEmpty ? "Required" : null;
+                            stockError = stockCtrl.text.trim().isEmpty
+                                ? "Required"
+                                : null;
                           });
 
                           if (nameError != null ||
@@ -600,16 +597,11 @@ class _ProductScreenState extends State<ProductScreen> {
     final canManageStock = widget.userRole != UserRole.customer;
 
     if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Stock"),
-        backgroundColor: Colors.blue,
-      ),
+      appBar: AppBar(title: const Text("Stock"), backgroundColor: Colors.blue),
       floatingActionButton: canManageStock
           ? FloatingActionButton(
               heroTag: null,
@@ -708,8 +700,9 @@ class _ProductScreenState extends State<ProductScreen> {
                                   decoration: BoxDecoration(
                                     color: outOfStock
                                         ? Colors.red.withOpacity(0.10)
-                                        : const Color(0xff6D5DF6)
-                                            .withOpacity(0.10),
+                                        : const Color(
+                                            0xff6D5DF6,
+                                          ).withOpacity(0.10),
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   child: Icon(
@@ -746,8 +739,9 @@ class _ProductScreenState extends State<ProductScreen> {
                                               vertical: 4,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xff6D5DF6)
-                                                  .withOpacity(0.10),
+                                              color: const Color(
+                                                0xff6D5DF6,
+                                              ).withOpacity(0.10),
                                               borderRadius:
                                                   BorderRadius.circular(30),
                                             ),
@@ -771,8 +765,9 @@ class _ProductScreenState extends State<ProductScreen> {
                                             decoration: BoxDecoration(
                                               color: outOfStock
                                                   ? Colors.red.withOpacity(0.10)
-                                                  : Colors.green
-                                                      .withOpacity(0.10),
+                                                  : Colors.green.withOpacity(
+                                                      0.10,
+                                                    ),
                                               borderRadius:
                                                   BorderRadius.circular(30),
                                             ),
@@ -830,7 +825,7 @@ class _ProductScreenState extends State<ProductScreen> {
                         );
                       },
                     ),
-            )
+            ),
           ],
         ),
       ),
