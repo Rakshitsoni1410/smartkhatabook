@@ -1,13 +1,27 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-import 'forgot_password_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/user_role.dart';
+import 'forgot_password_screen.dart';
 import 'owner_dashboard.dart';
 import 'signup_screen.dart';
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const _kAccent = Color(0xff2EA3F2);
+const _kDarkBg = Color(0xff0D1117);
+const _kDarkCard = Color(0xff161B22);
+const _kLightBg = Color(0xffF4F7FB);
+const _kLightTitle = Color(0xff1565C0);
+const _kFieldBgDark = Color(0xff0D1117);
+const _kFieldBgLight = Color(0xffF7FAFC);
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,160 +32,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  void _showMessage(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(fontWeight: FontWeight.w500),
-        ),
-        backgroundColor: isError
-            ? Colors.red.shade600
-            : const Color(0xff2EA3F2),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final base = dotenv.env['BASE_URL'] ?? '';
-
-    if (base.isEmpty) {
-      _showMessage("BASE_URL is missing in .env file", isError: true);
-      return;
-    }
-
-    final uri = Uri.parse('$base/user/login');
-
-    setState(() => _isLoading = true);
-
-    try {
-      final resp = await http
-          .post(
-            uri,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'phone': _phoneController.text.trim(),
-              'password': _passwordController.text.trim(),
-            }),
-          )
-          .timeout(const Duration(seconds: 20));
-
-      final data = jsonDecode(resp.body);
-
-      if (resp.statusCode == 200) {
-        _showMessage(data['message'] ?? "Login successful");
-
-        // SAVE TOKEN
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-
-        await prefs.setString("token", data["token"] ?? "");
-
-        // SAVE USER DATA
-        await prefs.setString("user", jsonEncode(data["user"]));
-
-        final user = data['user'];
-
-        final userId = user?['_id']?.toString() ?? '';
-
-        final userName = user?['name']?.toString() ?? '';
-
-        final shopName = user?['shopName']?.toString() ?? '';
-
-        final businessType = user?['businessType']?.toString() ?? '';
-
-        final roleValue = user?['role'];
-
-        if (userId.isEmpty) {
-          _showMessage("User details missing in login response", isError: true);
-
-          return;
-        }
-
-        late final UserRole parsedRole;
-
-        try {
-          parsedRole = parseUserRole(roleValue);
-        } catch (e) {
-          _showMessage("Invalid user role: $roleValue", isError: true);
-
-          return;
-        }
-
-        await Future.delayed(const Duration(milliseconds: 600));
-
-        if (!mounted) return;
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => OwnerDashboard(
-              userId: userId,
-              userName: userName,
-              shopName: shopName,
-              businessType: businessType,
-              userRole: parsedRole,
-            ),
-          ),
-        );
-      } else {
-        _showMessage(data['message'] ?? "Login failed", isError: true);
-      }
-    } on TimeoutException {
-      _showMessage("Server not responding. Please try again.", isError: true);
-    } catch (e) {
-      _showMessage("Login failed. Please try again.", isError: true);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  InputDecoration _inputDecoration({
-    required String label,
-    required IconData icon,
-    required bool isDark,
-    Widget? suffixIcon,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
-      prefixIcon: Icon(icon, color: const Color(0xff2EA3F2)),
-      suffixIcon: suffixIcon,
-      counterText: "",
-      filled: true,
-      fillColor: isDark ? const Color(0xff0D1117) : const Color(0xffF7FAFC),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xff2EA3F2), width: 1.5),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
-    );
-  }
+  // ─── Lifecycle ─────────────────────────────────────────────────────────────
 
   @override
   void dispose() {
@@ -180,20 +47,246 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  void _showMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+          backgroundColor: isError ? Colors.red.shade600 : _kAccent,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
+  Future<void> _persistSession({
+    required String token,
+    required Map<String, dynamic> user,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await Future.wait([
+      prefs.setString('token', token),
+      prefs.setString('user', jsonEncode(user)),
+    ]);
+  }
+
+  // ─── Login logic ───────────────────────────────────────────────────────────
+
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final baseUrl = dotenv.env['BASE_URL'] ?? '';
+    if (baseUrl.isEmpty) {
+      _showMessage('BASE_URL is missing in .env file', isError: true);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/user/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'phone': _phoneController.text.trim(),
+              'password': _passwordController.text.trim(),
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode != 200) {
+        _showMessage(
+          data['message']?.toString() ?? 'Login failed',
+          isError: true,
+        );
+        return;
+      }
+
+      _showMessage(data['message']?.toString() ?? 'Login successful');
+
+      final user = data['user'] as Map<String, dynamic>?;
+      final userId = user?['_id']?.toString() ?? '';
+
+      if (userId.isEmpty) {
+        _showMessage('User details missing in login response', isError: true);
+        return;
+      }
+
+      final roleValue = user?['role'];
+      late final UserRole parsedRole;
+      try {
+        parsedRole = parseUserRole(roleValue);
+      } catch (_) {
+        _showMessage('Invalid user role: $roleValue', isError: true);
+        return;
+      }
+
+      await _persistSession(
+        token: data['token']?.toString() ?? '',
+        user: user ?? {},
+      );
+
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OwnerDashboard(
+            userId: userId,
+            userName: user?['name']?.toString() ?? '',
+            shopName: user?['shopName']?.toString() ?? '',
+            businessType: user?['businessType']?.toString() ?? '',
+            userRole: parsedRole,
+          ),
+        ),
+      );
+    } on TimeoutException {
+      _showMessage('Server not responding. Please try again.', isError: true);
+    } catch (_) {
+      _showMessage('Login failed. Please try again.', isError: true);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ─── Build helpers ─────────────────────────────────────────────────────────
+
+  InputDecoration _inputDecoration({
+    required String label,
+    required IconData icon,
+    required bool isDark,
+    Widget? suffixIcon,
+  }) {
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+    );
+
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+      prefixIcon: Icon(icon, color: _kAccent),
+      suffixIcon: suffixIcon,
+      counterText: '',
+      filled: true,
+      fillColor: isDark ? _kFieldBgDark : _kFieldBgLight,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      border: border,
+      enabledBorder: border,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: _kAccent, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+    );
+  }
+
+  Widget _buildPhoneField(bool isDark) {
+    return TextFormField(
+      controller: _phoneController,
+      keyboardType: TextInputType.phone,
+      maxLength: 10,
+      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+      decoration: _inputDecoration(
+        label: 'Mobile Number',
+        icon: Icons.phone_outlined,
+        isDark: isDark,
+      ),
+      validator: (v) {
+        if (v == null || v.trim().isEmpty) return 'Enter mobile number';
+        if (!RegExp(r'^[0-9]{10}$').hasMatch(v.trim())) {
+          return 'Enter valid 10-digit number';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPasswordField(bool isDark) {
+    return TextFormField(
+      controller: _passwordController,
+      obscureText: _obscurePassword,
+      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+      decoration: _inputDecoration(
+        label: 'Password',
+        icon: Icons.lock_outline,
+        isDark: isDark,
+        suffixIcon: IconButton(
+          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+          icon: Icon(
+            _obscurePassword
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
+            color: isDark ? Colors.white70 : Colors.black54,
+          ),
+        ),
+      ),
+      validator: (v) =>
+          (v == null || v.trim().isEmpty) ? 'Enter password' : null,
+    );
+  }
+
+  Widget _buildLoginButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _login,
+        style: ElevatedButton.styleFrom(
+          elevation: 0,
+          backgroundColor: _kAccent,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: _isLoading
+            ? const SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : const Text(
+                'Login',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+      ),
+    );
+  }
+
+  // ─── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final bgColor = isDark ? const Color(0xff0D1117) : const Color(0xffF4F7FB);
-    final cardColor = isDark ? const Color(0xff161B22) : Colors.white;
-    final titleColor = isDark
-        ? const Color(0xff2EA3F2)
-        : const Color(0xff1565C0);
+    final bgColor = isDark ? _kDarkBg : _kLightBg;
+    final cardColor = isDark ? _kDarkCard : Colors.white;
+    final titleColor = isDark ? _kAccent : _kLightTitle;
     final subtitleColor = isDark ? Colors.white60 : Colors.black54;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final borderColor = isDark
-        ? const Color(0xff2EA3F2).withOpacity(.20)
-        : const Color(0xff2EA3F2).withOpacity(.12);
+    final borderColor = _kAccent.withOpacity(isDark ? .20 : .12);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -207,10 +300,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: Column(
                   children: [
-                    Image.asset("assets/images/logo.png", height: 150),
+                    Image.asset('assets/images/logo.png', height: 150),
                     const SizedBox(height: 12),
                     Text(
-                      "SMART KHATABOOK",
+                      'SMART KHATABOOK',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 22,
@@ -221,7 +314,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      "Track. Manage. Profit.",
+                      'Track. Manage. Profit.',
                       style: TextStyle(
                         color: subtitleColor,
                         fontSize: 13,
@@ -229,6 +322,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 34),
+                    // ── Card ────────────────────────────────────────────────
                     Container(
                       padding: const EdgeInsets.all(22),
                       decoration: BoxDecoration(
@@ -237,166 +331,76 @@ class _LoginScreenState extends State<LoginScreen> {
                         border: Border.all(color: borderColor),
                         boxShadow: [
                           BoxShadow(
-                            color: isDark
-                                ? Colors.black.withOpacity(.18)
-                                : Colors.black.withOpacity(.06),
+                            color: Colors.black.withOpacity(isDark ? .18 : .06),
                             blurRadius: 24,
                             offset: const Offset(0, 10),
                           ),
                         ],
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              "Welcome Back",
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: textColor,
-                              ),
+                          Text(
+                            'Welcome Back',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
                             ),
                           ),
                           const SizedBox(height: 6),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              "Login to continue to your account",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: subtitleColor,
-                              ),
+                          Text(
+                            'Login to continue to your account',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: subtitleColor,
                             ),
                           ),
                           const SizedBox(height: 22),
-                          TextFormField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            maxLength: 10,
-                            style: TextStyle(color: textColor),
-                            decoration: _inputDecoration(
-                              label: "Mobile Number",
-                              icon: Icons.phone_outlined,
-                              isDark: isDark,
-                            ),
-                            validator: (v) {
-                              if (v == null || v.trim().isEmpty) {
-                                return "Enter mobile number";
-                              }
-                              if (!RegExp(r'^[0-9]{10}$').hasMatch(v.trim())) {
-                                return "Enter valid 10-digit number";
-                              }
-                              return null;
-                            },
-                          ),
+                          _buildPhoneField(isDark),
                           const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: _obscurePassword,
-                            style: TextStyle(color: textColor),
-                            decoration: _inputDecoration(
-                              label: "Password",
-                              icon: Icons.lock_outline,
-                              isDark: isDark,
-                              suffixIcon: IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                },
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_off_outlined
-                                      : Icons.visibility_outlined,
-                                  color: isDark
-                                      ? Colors.white70
-                                      : Colors.black54,
-                                ),
-                              ),
-                            ),
-                            validator: (v) => v == null || v.trim().isEmpty
-                                ? "Enter password"
-                                : null,
-                          ),
+                          _buildPasswordField(isDark),
                           const SizedBox(height: 26),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 54,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _login,
-                              style: ElevatedButton.styleFrom(
-                                elevation: 0,
-                                backgroundColor: const Color(0xff2EA3F2),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      height: 22,
-                                      width: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Text(
-                                      "Login",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                            ),
-                          ),
+                          _buildLoginButton(),
                           const SizedBox(height: 18),
+                          // ── Forgot password ───────────────────────────────
                           Align(
                             alignment: Alignment.centerRight,
-
                             child: TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const ForgotPasswordScreen(),
-                                  ),
-                                );
-                              },
-
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgotPasswordScreen(),
+                                ),
+                              ),
                               child: const Text(
-                                "Forgot Password?",
-
+                                'Forgot Password?',
                                 style: TextStyle(
-                                  color: Color(0xff2EA3F2),
+                                  color: _kAccent,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
                           ),
+                          // ── Sign up row ───────────────────────────────────
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                "Don’t have an account? ",
+                                "Don't have an account? ",
                                 style: TextStyle(color: subtitleColor),
                               ),
                               TextButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const SignupScreen(),
-                                    ),
-                                  );
-                                },
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const SignupScreen(),
+                                  ),
+                                ),
                                 child: const Text(
-                                  "Sign up",
+                                  'Sign up',
                                   style: TextStyle(
-                                    color: Color(0xff2EA3F2),
+                                    color: _kAccent,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
