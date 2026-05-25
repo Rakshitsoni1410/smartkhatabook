@@ -6,7 +6,16 @@ import 'package:http/http.dart' as http;
 
 import 'wholesaler_order_status_screen.dart';
 
-enum OrderStatus { ordered, onTheWay, onHold, delivered, cancelled }
+enum OrderStatus {
+  pending,
+  approved,
+  processing,
+  onTheWay,
+  delivered,
+  completed,
+  rejected,
+  cancelled,
+}
 
 class WholesalerOrderListScreen extends StatefulWidget {
   final String title;
@@ -25,8 +34,7 @@ class WholesalerOrderListScreen extends StatefulWidget {
       _WholesalerOrderListScreenState();
 }
 
-class _WholesalerOrderListScreenState
-    extends State<WholesalerOrderListScreen> {
+class _WholesalerOrderListScreenState extends State<WholesalerOrderListScreen> {
   String _filter = "All";
   bool _isLoading = true;
 
@@ -69,9 +77,9 @@ class _WholesalerOrderListScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Orders error: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Orders error: $e")));
       }
     } finally {
       if (mounted) {
@@ -83,17 +91,25 @@ class _WholesalerOrderListScreenState
   List<Map<String, dynamic>> get filteredOrders {
     if (_filter == "Completed") {
       return orders
-          .where((o) =>
-              (o["orderStatus"]?.toString().toLowerCase() ?? "") ==
-              "delivered")
+          .where(
+            (o) =>
+                (o["orderStatus"]?.toString().toLowerCase() ?? "") ==
+                    "delivered" ||
+                (o["orderStatus"]?.toString().toLowerCase() ?? "") ==
+                    "completed",
+          )
           .toList();
     }
 
     if (_filter == "Pending") {
       return orders
-          .where((o) =>
-              (o["orderStatus"]?.toString().toLowerCase() ?? "") !=
-              "delivered")
+          .where(
+            (o) =>
+                (o["orderStatus"]?.toString().toLowerCase() ?? "") !=
+                    "delivered" &&
+                (o["orderStatus"]?.toString().toLowerCase() ?? "") !=
+                    "completed",
+          )
           .toList();
     }
 
@@ -104,18 +120,45 @@ class _WholesalerOrderListScreenState
     switch (status.toLowerCase()) {
       case "delivered":
         return Colors.green;
+
+      case "completed":
+        return Colors.teal;
+
+      case "processing":
+        return Colors.purple;
+
       case "ontheway":
         return Colors.orange;
+
       case "approved":
         return Colors.blue;
+
       case "onhold":
         return Colors.grey;
+
       case "cancelled":
       case "rejected":
         return Colors.red;
+
       case "pending":
       default:
         return Colors.deepPurple;
+    }
+  }
+
+  Color _paymentColor(String status) {
+    switch (status.toLowerCase()) {
+      case "paid":
+        return Colors.green;
+
+      case "advancepaid":
+        return Colors.orange;
+
+      case "advancerequested":
+        return Colors.blue;
+
+      default:
+        return Colors.red;
     }
   }
 
@@ -123,18 +166,31 @@ class _WholesalerOrderListScreenState
     switch (status.toLowerCase()) {
       case "ontheway":
         return "On The Way";
+
       case "onhold":
         return "On Hold";
+
       case "approved":
         return "Approved";
+
+      case "processing":
+        return "Processing";
+
+      case "completed":
+        return "Completed";
+
       case "rejected":
         return "Rejected";
+
       case "pending":
         return "Pending";
+
       case "delivered":
         return "Delivered";
+
       case "cancelled":
         return "Cancelled";
+
       default:
         return status.isEmpty ? "Pending" : status;
     }
@@ -145,33 +201,37 @@ class _WholesalerOrderListScreenState
 
     if (normalizedRole == "wholesaler") {
       final retailer = order["retailerId"];
+
       if (retailer is Map<String, dynamic>) {
         return retailer["shopName"]?.toString().isNotEmpty == true
             ? retailer["shopName"].toString()
             : retailer["name"]?.toString() ?? "Retailer";
       }
+
       return order["retailerName"]?.toString() ?? "Retailer";
     } else {
       final wholesaler = order["wholesalerId"];
+
       if (wholesaler is Map<String, dynamic>) {
         return wholesaler["shopName"]?.toString().isNotEmpty == true
             ? wholesaler["shopName"].toString()
             : wholesaler["name"]?.toString() ?? "Wholesaler";
       }
+
       return order["wholesalerName"]?.toString() ?? "Wholesaler";
     }
   }
 
   String _displayOrderId(Map<String, dynamic> order) {
-    return order["_id"]?.toString() ??
-        order["id"]?.toString() ??
-        "Order";
+    return order["_id"]?.toString() ?? order["id"]?.toString() ?? "Order";
   }
 
   double _displayAmount(Map<String, dynamic> order) {
     final value = order["totalAmount"];
+
     if (value is int) return value.toDouble();
     if (value is double) return value;
+
     return double.tryParse(value?.toString() ?? "0") ?? 0;
   }
 
@@ -187,10 +247,7 @@ class _WholesalerOrderListScreenState
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
-          IconButton(
-            onPressed: loadOrders,
-            icon: const Icon(Icons.refresh),
-          ),
+          IconButton(onPressed: loadOrders, icon: const Icon(Icons.refresh)),
           DropdownButton<String>(
             value: _filter,
             underline: const SizedBox(),
@@ -208,124 +265,174 @@ class _WholesalerOrderListScreenState
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : filteredOrders.isEmpty
-              ? Center(
-                  child: Text(
-                    normalizedRole == "wholesaler"
-                        ? "No incoming orders"
-                        : "No order history found",
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: loadOrders,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredOrders.length,
-                    itemBuilder: (context, index) {
-                      final o = filteredOrders[index];
-                      final status =
-                          o["orderStatus"]?.toString() ?? "pending";
-                      final partyName = _displayPartyName(o);
-                      final amount = _displayAmount(o);
-                      final orderId = _displayOrderId(o);
-                      final productName = _displayProduct(o);
+          ? Center(
+              child: Text(
+                normalizedRole == "wholesaler"
+                    ? "No incoming orders"
+                    : "No order history found",
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: loadOrders,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: filteredOrders.length,
+                itemBuilder: (context, index) {
+                  final o = filteredOrders[index];
 
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => WholesalerOrderStatusScreen(
-                                  order: o,
-                                  userRole: widget.userRole,
-                                ),
-                              ),
-                            );
+                  final status = o["orderStatus"]?.toString() ?? "pending";
 
-                            loadOrders();
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
+                  final partyName = _displayPartyName(o);
+
+                  final amount = _displayAmount(o);
+
+                  final orderId = _displayOrderId(o);
+
+                  final productName = _displayProduct(o);
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => WholesalerOrderStatusScreen(
+                              order: o,
+                              userRole: widget.userRole,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          ),
+                        );
+
+                        loadOrders();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        partyName,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
+                                Expanded(
+                                  child: Text(
+                                    partyName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      "₹${amount.toStringAsFixed(0)}",
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  productName,
-                                  style: TextStyle(
-                                    color: Colors.grey.shade700,
-                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        orderId,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Chip(
-                                      label: Text(
-                                        _statusText(status),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      backgroundColor: _statusColor(status),
-                                      visualDensity: VisualDensity.compact,
-                                    ),
-                                  ],
+                                const SizedBox(width: 12),
+                                Text(
+                                  "₹${amount.toStringAsFixed(0)}",
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
+
+                            const SizedBox(height: 6),
+
+                            Text(
+                              productName,
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    orderId,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: Colors.grey),
+                                  ),
+                                ),
+
+                                const SizedBox(width: 12),
+
+                                Chip(
+                                  label: Text(
+                                    _statusText(status),
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  backgroundColor: _statusColor(status),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            Chip(
+                              label: Text(
+                                o["paymentStatus"] ?? "unpaid",
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: _paymentColor(
+                                o["paymentStatus"]?.toString() ?? "unpaid",
+                              ),
+                              visualDensity: VisualDensity.compact,
+                            ),
+
+                            if (o["deliveryDate"] != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  "Delivery: ${o["deliveryDate"].toString().split("T")[0]}",
+                                  style: TextStyle(color: Colors.grey.shade700),
+                                ),
+                              ),
+
+                            if (o["advanceRequested"] == true)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  "Advance Requested",
+                                  style: const TextStyle(
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+
+                            if (o["finalPaymentRequested"] == true)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  "Final Payment Pending",
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                      );
-                    },
-                  ),
-                ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
     );
   }
 }
