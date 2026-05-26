@@ -96,7 +96,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             ),
           ),
           _DashboardTabConfig(
-            page: const LedgerSummaryScreen(),
+            page: const LedgerSummaryScreen(userId: '',),
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.book_outlined),
               label: 'Ledger',
@@ -170,7 +170,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             ),
           ),
           _DashboardTabConfig(
-            page: const LedgerSummaryScreen(),
+            page: const LedgerSummaryScreen(userId: '',),
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.book_outlined),
               label: 'Ledger',
@@ -226,7 +226,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             ),
           ),
           _DashboardTabConfig(
-            page: const LedgerSummaryScreen(),
+            page: const LedgerSummaryScreen(userId: '',),
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.book_outlined),
               label: 'Ledger',
