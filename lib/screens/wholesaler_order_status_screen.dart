@@ -519,7 +519,7 @@ class _WholesalerOrderStatusScreenState
 
             // ─── WHOLESALER: REQUEST ADVANCE ──────────────────────
             // Show only if advance not yet requested
-            if (canEditStatus && !_advanceRequested)
+            if (canEditStatus && !_advanceRequested && !_advancePaid)
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -571,7 +571,7 @@ class _WholesalerOrderStatusScreenState
 
             // ─── RETAILER: PAY ADVANCE ────────────────────────────
             // ✅ FIX: Use local _advanceRequested and _advancePaid
-            if (!canEditStatus && _advanceRequested)
+            if (!canEditStatus && _advanceRequested && !isFullyPaid)
               Card(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
