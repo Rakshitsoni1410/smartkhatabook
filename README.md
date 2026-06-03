@@ -6,6 +6,8 @@ Smart Khata replaces the traditional paper khata book with a smart, fast, and us
 
 ---
 
+## live project 
+https://smartkhatabooks.netlify.app/
 # 🔗 Project Repository
 
 ## Frontend Repository
