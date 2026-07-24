@@ -287,6 +287,10 @@ class _ProductScreenState extends State<ProductScreen> {
 
               setModalState(() {
                 profit = selling - purchase;
+                sellingError =
+                    (sellingCtrl.text.trim().isNotEmpty && selling < purchase)
+                    ? "Selling price cannot be less than purchase price"
+                    : null;
               });
             }
 
@@ -307,6 +311,10 @@ class _ProductScreenState extends State<ProductScreen> {
 
               setModalState(() {
                 profit = selling - purchase;
+                sellingError =
+                    (sellingCtrl.text.trim().isNotEmpty && selling < purchase)
+                    ? "Selling price cannot be less than purchase price"
+                    : null;
               });
             }
 
@@ -434,12 +442,19 @@ class _ProductScreenState extends State<ProductScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
+                        color: profit < 0
+                            ? Colors.red.withOpacity(0.1)
+                            : Colors.green.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        "Profit: ₹${profit.toStringAsFixed(2)}",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        profit < 0
+                            ? "Loss: ₹${(-profit).toStringAsFixed(2)} — selling price is lower than purchase price"
+                            : "Profit: ₹${profit.toStringAsFixed(2)}",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: profit < 0 ? Colors.red[800] : Colors.black87,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -502,6 +517,11 @@ class _ProductScreenState extends State<ProductScreen> {
                       child: ElevatedButton(
                         child: const Text("Add Product"),
                         onPressed: () {
+                          final purchaseVal =
+                              double.tryParse(purchaseCtrl.text) ?? 0;
+                          final sellingVal =
+                              double.tryParse(sellingCtrl.text) ?? 0;
+
                           setModalState(() {
                             nameError = nameCtrl.text.trim().isEmpty
                                 ? "Required"
@@ -512,9 +532,14 @@ class _ProductScreenState extends State<ProductScreen> {
                             purchaseError = purchaseCtrl.text.trim().isEmpty
                                 ? "Required"
                                 : null;
-                            sellingError = sellingCtrl.text.trim().isEmpty
-                                ? "Required"
-                                : null;
+                            if (sellingCtrl.text.trim().isEmpty) {
+                              sellingError = "Required";
+                            } else if (sellingVal < purchaseVal) {
+                              sellingError =
+                                  "Selling price cannot be less than purchase price";
+                            } else {
+                              sellingError = null;
+                            }
                             stockError = stockCtrl.text.trim().isEmpty
                                 ? "Required"
                                 : null;
