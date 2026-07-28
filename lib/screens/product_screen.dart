@@ -55,10 +55,8 @@ class _ProductScreenState extends State<ProductScreen> {
     try {
       final base = dotenv.env['BASE_URL'] ?? '';
       final uri = Uri.parse('$base/product/suggestions/${widget.userId}');
-
       final resp = await http.get(uri).timeout(const Duration(seconds: 20));
       final data = jsonDecode(resp.body);
-
       if (resp.statusCode == 200 && data["success"] == true) {
         setState(() {
           businessType =
@@ -80,9 +78,9 @@ class _ProductScreenState extends State<ProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Suggestions error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Suggestions error: $e")),
+        );
       }
     }
   }
@@ -91,10 +89,8 @@ class _ProductScreenState extends State<ProductScreen> {
     try {
       final base = dotenv.env['BASE_URL'] ?? '';
       final uri = Uri.parse('$base/product/list/${widget.userId}');
-
       final resp = await http.get(uri).timeout(const Duration(seconds: 20));
       final data = jsonDecode(resp.body);
-
       if (resp.statusCode == 200 && data["success"] == true) {
         setState(() {
           products = List<Map<String, dynamic>>.from(data["products"] ?? []);
@@ -110,9 +106,9 @@ class _ProductScreenState extends State<ProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Products error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Products error: $e")),
+        );
       }
     }
   }
@@ -121,7 +117,6 @@ class _ProductScreenState extends State<ProductScreen> {
     try {
       final base = dotenv.env['BASE_URL'] ?? '';
       final uri = Uri.parse('$base/product/add');
-
       final resp = await http
           .post(
             uri,
@@ -129,9 +124,7 @@ class _ProductScreenState extends State<ProductScreen> {
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 20));
-
       final data = jsonDecode(resp.body);
-
       if (resp.statusCode == 201 && data["success"] == true) {
         await loadProducts();
         if (mounted) {
@@ -155,9 +148,9 @@ class _ProductScreenState extends State<ProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Add product failed: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Add product failed: $e")),
+        );
       }
     }
   }
@@ -167,7 +160,6 @@ class _ProductScreenState extends State<ProductScreen> {
       final base = dotenv.env['BASE_URL'] ?? '';
       final productId = updatedProduct["_id"];
       final uri = Uri.parse('$base/product/update/$productId');
-
       final resp = await http
           .put(
             uri,
@@ -175,9 +167,7 @@ class _ProductScreenState extends State<ProductScreen> {
             body: jsonEncode(updatedProduct),
           )
           .timeout(const Duration(seconds: 20));
-
       final data = jsonDecode(resp.body);
-
       if (resp.statusCode == 200 && data["success"] == true) {
         await loadProducts();
         if (mounted) {
@@ -194,21 +184,43 @@ class _ProductScreenState extends State<ProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Update failed: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Update failed: $e")),
+        );
       }
     }
   }
 
+  // ✅ FIX 3: Delete with confirmation dialog
   Future<void> deleteProductApi(String productId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete Product"),
+        content: const Text(
+          "Are you sure you want to delete this product? This action cannot be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     try {
       final base = dotenv.env['BASE_URL'] ?? '';
       final uri = Uri.parse('$base/product/delete/$productId');
-
       final resp = await http.delete(uri).timeout(const Duration(seconds: 20));
       final data = jsonDecode(resp.body);
-
       if (resp.statusCode == 200 && data["success"] == true) {
         await loadProducts();
         if (mounted) {
@@ -225,9 +237,9 @@ class _ProductScreenState extends State<ProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Delete failed: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Delete failed: $e")),
+        );
       }
     }
   }
@@ -236,17 +248,309 @@ class _ProductScreenState extends State<ProductScreen> {
     return products.where((product) {
       final name = (product["name"] ?? "").toString().toLowerCase();
       final category = (product["category"] ?? "").toString().toLowerCase();
-
       return name.contains(searchText.toLowerCase()) ||
           category.contains(searchText.toLowerCase());
     }).toList();
   }
 
+  // ✅ FIX 1: Edit product bottom sheet
+  void openEditProductForm(Map<String, dynamic> product) {
+    final TextEditingController nameCtrl =
+        TextEditingController(text: product["name"]?.toString() ?? "");
+    final TextEditingController categoryCtrl =
+        TextEditingController(text: product["category"]?.toString() ?? "");
+    final TextEditingController descCtrl =
+        TextEditingController(text: product["description"]?.toString() ?? "");
+    final TextEditingController purchaseCtrl =
+        TextEditingController(text: (product["purchase"] ?? 0).toString());
+    final TextEditingController sellingCtrl =
+        TextEditingController(text: (product["selling"] ?? 0).toString());
+    final TextEditingController stockCtrl =
+        TextEditingController(text: (product["stockQty"] ?? 0).toString());
+    final TextEditingController weightCtrl =
+        TextEditingController(text: (product["weight"] ?? 0).toString());
+
+    bool inStock = product["inStock"] == true;
+    bool inWeight = product["inWeight"] == true;
+    String weightUnit = product["weightUnit"]?.toString() ?? "kg";
+
+    final purchaseVal = double.tryParse(purchaseCtrl.text) ?? 0;
+    final sellingVal = double.tryParse(sellingCtrl.text) ?? 0;
+    double profit = sellingVal - purchaseVal;
+
+    String? nameError;
+    String? categoryError;
+    String? purchaseError;
+    String? sellingError;
+    String? stockError;
+
+    final List<String> weightUnits = [
+      "kg", "gram", "liter", "ml", "piece", "pack", "dozen", "strip",
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            void calcProfit() {
+              final purchase = double.tryParse(purchaseCtrl.text) ?? 0;
+              final selling = double.tryParse(sellingCtrl.text) ?? 0;
+              setModalState(() {
+                profit = selling - purchase;
+                sellingError =
+                    (sellingCtrl.text.trim().isNotEmpty && selling < purchase)
+                    ? "Selling price cannot be less than purchase price"
+                    : null;
+              });
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Edit Product",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text("Product Name *"),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: InputDecoration(
+                        errorText: nameError,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text("Category *"),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: categoryCtrl,
+                      decoration: InputDecoration(
+                        errorText: categoryError,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text("Description"),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: descCtrl,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: purchaseCtrl,
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) => calcProfit(),
+                            decoration: InputDecoration(
+                              labelText: "Purchase ₹",
+                              errorText: purchaseError,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: sellingCtrl,
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) => calcProfit(),
+                            decoration: InputDecoration(
+                              labelText: "Selling ₹",
+                              errorText: sellingError,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: profit < 0
+                            ? Colors.red.withOpacity(0.1)
+                            : Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        profit < 0
+                            ? "Loss: ₹${(-profit).toStringAsFixed(2)}"
+                            : "Profit: ₹${profit.toStringAsFixed(2)}",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: profit < 0 ? Colors.red[800] : Colors.black87,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text("Stock Quantity *"),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: stockCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        errorText: stockError,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    SwitchListTile(
+                      value: inStock,
+                      title: const Text("In Stock"),
+                      onChanged: (val) => setModalState(() => inStock = val),
+                    ),
+                    SwitchListTile(
+                      value: inWeight,
+                      title: const Text("Sell in Weight"),
+                      onChanged: (val) => setModalState(() => inWeight = val),
+                    ),
+                    if (inWeight) ...[
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: weightUnit,
+                        items: weightUnits
+                            .map((u) =>
+                                DropdownMenuItem(value: u, child: Text(u)))
+                            .toList(),
+                        onChanged: (val) =>
+                            setModalState(() => weightUnit = val!),
+                        decoration:
+                            const InputDecoration(labelText: "Weight Unit"),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: weightCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: "Weight per item",
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xff6D5DF6),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text("Save Changes"),
+                        onPressed: () {
+                          final purchaseVal =
+                              double.tryParse(purchaseCtrl.text) ?? 0;
+                          final sellingVal =
+                              double.tryParse(sellingCtrl.text) ?? 0;
+
+                          setModalState(() {
+                            nameError = nameCtrl.text.trim().isEmpty
+                                ? "Required"
+                                : null;
+                            categoryError = categoryCtrl.text.trim().isEmpty
+                                ? "Required"
+                                : null;
+                            purchaseError = purchaseCtrl.text.trim().isEmpty
+                                ? "Required"
+                                : null;
+                            if (sellingCtrl.text.trim().isEmpty) {
+                              sellingError = "Required";
+                            } else if (sellingVal < purchaseVal) {
+                              sellingError =
+                                  "Selling price cannot be less than purchase price";
+                            } else {
+                              sellingError = null;
+                            }
+                            stockError = stockCtrl.text.trim().isEmpty
+                                ? "Required"
+                                : null;
+                          });
+
+                          if (nameError != null ||
+                              categoryError != null ||
+                              purchaseError != null ||
+                              sellingError != null ||
+                              stockError != null) return;
+
+                          final updatedProduct = {
+                            ...product,
+                            "name": nameCtrl.text.trim(),
+                            "category": categoryCtrl.text.trim(),
+                            "description": descCtrl.text.trim(),
+                            "purchase":
+                                double.tryParse(purchaseCtrl.text) ?? 0,
+                            "selling": double.tryParse(sellingCtrl.text) ?? 0,
+                            "stockQty": int.tryParse(stockCtrl.text) ?? 0,
+                            "inStock": inStock,
+                            "inWeight": inWeight,
+                            "weightUnit": weightUnit,
+                            "weight": double.tryParse(weightCtrl.text) ?? 0,
+                          };
+
+                          Navigator.pop(context);
+                          updateProductApi(updatedProduct);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void openAddProductForm() {
     final TextEditingController nameCtrl = TextEditingController();
-    final TextEditingController categoryCtrl = TextEditingController(
-      text: businessType,
-    );
+    final TextEditingController categoryCtrl =
+        TextEditingController(text: businessType);
     final TextEditingController descCtrl = TextEditingController();
     final TextEditingController purchaseCtrl = TextEditingController();
     final TextEditingController sellingCtrl = TextEditingController();
@@ -265,14 +569,7 @@ class _ProductScreenState extends State<ProductScreen> {
     String? stockError;
 
     final List<String> weightUnits = [
-      "kg",
-      "gram",
-      "liter",
-      "ml",
-      "piece",
-      "pack",
-      "dozen",
-      "strip",
+      "kg", "gram", "liter", "ml", "piece", "pack", "dozen", "strip",
     ];
 
     showModalBottomSheet(
@@ -284,7 +581,6 @@ class _ProductScreenState extends State<ProductScreen> {
             void calcProfit() {
               final purchase = double.tryParse(purchaseCtrl.text) ?? 0;
               final selling = double.tryParse(sellingCtrl.text) ?? 0;
-
               setModalState(() {
                 profit = selling - purchase;
                 sellingError =
@@ -296,7 +592,8 @@ class _ProductScreenState extends State<ProductScreen> {
 
             void applySuggestion(Map<String, dynamic> item) {
               nameCtrl.text = item["name"]?.toString() ?? "";
-              categoryCtrl.text = item["category"]?.toString() ?? businessType;
+              categoryCtrl.text =
+                  item["category"]?.toString() ?? businessType;
               descCtrl.text = item["description"]?.toString() ?? "";
               purchaseCtrl.text = (item["purchase"] ?? 0).toString();
               sellingCtrl.text = (item["selling"] ?? 0).toString();
@@ -305,10 +602,8 @@ class _ProductScreenState extends State<ProductScreen> {
               weightUnit = item["weightUnit"]?.toString() ?? "kg";
               weightCtrl.text = (item["weight"] ?? 0).toString();
               inStock = (item["stockQty"] ?? 0) > 0;
-
               final purchase = double.tryParse(purchaseCtrl.text) ?? 0;
               final selling = double.tryParse(sellingCtrl.text) ?? 0;
-
               setModalState(() {
                 profit = selling - purchase;
                 sellingError =
@@ -348,7 +643,8 @@ class _ProductScreenState extends State<ProductScreen> {
                     if (suggestions.isNotEmpty) ...[
                       Text(
                         "Suggested for $businessType",
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style:
+                            const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 8),
                       SizedBox(
@@ -356,11 +652,13 @@ class _ProductScreenState extends State<ProductScreen> {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: suggestions.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 8),
                           itemBuilder: (_, index) {
                             final item = suggestions[index];
                             return ActionChip(
-                              label: Text(item["name"]?.toString() ?? ""),
+                              label:
+                                  Text(item["name"]?.toString() ?? ""),
                               onPressed: () => applySuggestion(item),
                             );
                           },
@@ -453,7 +751,9 @@ class _ProductScreenState extends State<ProductScreen> {
                             : "Profit: ₹${profit.toStringAsFixed(2)}",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: profit < 0 ? Colors.red[800] : Colors.black87,
+                          color: profit < 0
+                              ? Colors.red[800]
+                              : Colors.black87,
                         ),
                       ),
                     ),
@@ -474,29 +774,25 @@ class _ProductScreenState extends State<ProductScreen> {
                     SwitchListTile(
                       value: inStock,
                       title: const Text("In Stock"),
-                      onChanged: (val) {
-                        setModalState(() => inStock = val);
-                      },
+                      onChanged: (val) =>
+                          setModalState(() => inStock = val),
                     ),
                     SwitchListTile(
                       value: inWeight,
                       title: const Text("Sell in Weight"),
-                      onChanged: (val) {
-                        setModalState(() => inWeight = val);
-                      },
+                      onChanged: (val) =>
+                          setModalState(() => inWeight = val),
                     ),
                     if (inWeight) ...[
                       const SizedBox(height: 10),
                       DropdownButtonFormField<String>(
                         value: weightUnit,
                         items: weightUnits
-                            .map(
-                              (u) => DropdownMenuItem(value: u, child: Text(u)),
-                            )
+                            .map((u) => DropdownMenuItem(
+                                value: u, child: Text(u)))
                             .toList(),
-                        onChanged: (val) {
-                          setModalState(() => weightUnit = val!);
-                        },
+                        onChanged: (val) =>
+                            setModalState(() => weightUnit = val!),
                         decoration: const InputDecoration(
                           labelText: "Weight Unit",
                         ),
@@ -526,10 +822,12 @@ class _ProductScreenState extends State<ProductScreen> {
                             nameError = nameCtrl.text.trim().isEmpty
                                 ? "Required"
                                 : null;
-                            categoryError = categoryCtrl.text.trim().isEmpty
+                            categoryError =
+                                categoryCtrl.text.trim().isEmpty
                                 ? "Required"
                                 : null;
-                            purchaseError = purchaseCtrl.text.trim().isEmpty
+                            purchaseError =
+                                purchaseCtrl.text.trim().isEmpty
                                 ? "Required"
                                 : null;
                             if (sellingCtrl.text.trim().isEmpty) {
@@ -549,22 +847,23 @@ class _ProductScreenState extends State<ProductScreen> {
                               categoryError != null ||
                               purchaseError != null ||
                               sellingError != null ||
-                              stockError != null) {
-                            return;
-                          }
+                              stockError != null) return;
 
                           final body = {
                             "ownerId": widget.userId,
                             "name": nameCtrl.text.trim(),
                             "category": categoryCtrl.text.trim(),
                             "description": descCtrl.text.trim(),
-                            "purchase": double.tryParse(purchaseCtrl.text) ?? 0,
-                            "selling": double.tryParse(sellingCtrl.text) ?? 0,
+                            "purchase":
+                                double.tryParse(purchaseCtrl.text) ?? 0,
+                            "selling":
+                                double.tryParse(sellingCtrl.text) ?? 0,
                             "stockQty": int.tryParse(stockCtrl.text) ?? 0,
                             "inStock": inStock,
                             "inWeight": inWeight,
                             "weightUnit": weightUnit,
-                            "weight": double.tryParse(weightCtrl.text) ?? 0,
+                            "weight":
+                                double.tryParse(weightCtrl.text) ?? 0,
                             "businessType": businessType,
                           };
 
@@ -579,6 +878,40 @@ class _ProductScreenState extends State<ProductScreen> {
           },
         );
       },
+    );
+  }
+
+  // ✅ FIX 5: Stock badge helper with Low Stock support
+  Widget _stockBadge(int stockQty, bool inStock) {
+    final bool outOfStock = !inStock || stockQty <= 0;
+    final bool lowStock = inStock && stockQty > 0 && stockQty <= 5;
+
+    final Color color = outOfStock
+        ? Colors.red
+        : lowStock
+            ? Colors.orange
+            : Colors.green;
+
+    final String label = outOfStock
+        ? "Out of Stock"
+        : lowStock
+            ? "Low Stock"
+            : "In Stock";
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
     );
   }
 
@@ -626,7 +959,18 @@ class _ProductScreenState extends State<ProductScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Stock"), backgroundColor: Colors.blue),
+      appBar: AppBar(
+        title: const Text("Stock"),
+        backgroundColor: Colors.blue,
+        // ✅ FIX 4: Manual refresh button in AppBar
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: "Refresh",
+            onPressed: loadAllData,
+          ),
+        ],
+      ),
       floatingActionButton: canManageStock
           ? FloatingActionButton(
               heroTag: null,
@@ -654,23 +998,31 @@ class _ProductScreenState extends State<ProductScreen> {
                   ? const Center(child: Text("No Products Found"))
                   : ListView.separated(
                       itemCount: filteredProducts.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: 12),
                       itemBuilder: (_, index) {
                         final product = filteredProducts[index];
 
+                        final int stockQty =
+                            int.tryParse(product["stockQty"].toString()) ??
+                                0;
+                        final bool inStock =
+                            product["inStock"] == true;
                         final bool outOfStock =
-                            (product["stockQty"] ?? 0) == 0 ||
-                            (product["inStock"] ?? false) == false;
+                            !inStock || stockQty <= 0;
 
-                        final String name = product["name"]?.toString() ?? "";
+                        final String name =
+                            product["name"]?.toString() ?? "";
                         final String category =
                             product["category"]?.toString() ?? "";
                         final double selling =
-                            double.tryParse(product["selling"].toString()) ?? 0;
+                            double.tryParse(
+                                    product["selling"].toString()) ??
+                                0;
                         final double profit =
-                            double.tryParse(product["profit"].toString()) ?? 0;
-                        final int stockQty =
-                            int.tryParse(product["stockQty"].toString()) ?? 0;
+                            double.tryParse(
+                                    product["profit"].toString()) ??
+                                0;
 
                         return InkWell(
                           borderRadius: BorderRadius.circular(18),
@@ -686,7 +1038,8 @@ class _ProductScreenState extends State<ProductScreen> {
                                   shopName: widget.shopName,
                                   businessType: businessType,
                                   onDelete: () async {
-                                    await deleteProductApi(product["_id"]);
+                                    await deleteProductApi(
+                                        product["_id"]);
                                     if (mounted) Navigator.pop(context);
                                   },
                                   onUpdate: (updatedProduct) async {
@@ -725,10 +1078,10 @@ class _ProductScreenState extends State<ProductScreen> {
                                   decoration: BoxDecoration(
                                     color: outOfStock
                                         ? Colors.red.withOpacity(0.10)
-                                        : const Color(
-                                            0xff6D5DF6,
-                                          ).withOpacity(0.10),
-                                    borderRadius: BorderRadius.circular(14),
+                                        : const Color(0xff6D5DF6)
+                                            .withOpacity(0.10),
+                                    borderRadius:
+                                        BorderRadius.circular(14),
                                   ),
                                   child: Icon(
                                     Icons.inventory_2_outlined,
@@ -743,30 +1096,51 @@ class _ProductScreenState extends State<ProductScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                          color: outOfStock
-                                              ? Colors.red
-                                              : Colors.black87,
-                                        ),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              name,
+                                              maxLines: 1,
+                                              overflow:
+                                                  TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                                color: outOfStock
+                                                    ? Colors.red
+                                                    : Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                          // ✅ FIX 1: Edit icon on card
+                                          if (canManageStock)
+                                            GestureDetector(
+                                              onTap: () =>
+                                                  openEditProductForm(
+                                                      product),
+                                              child: const Icon(
+                                                Icons.edit_outlined,
+                                                size: 18,
+                                                color: Color(0xff6D5DF6),
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                       const SizedBox(height: 6),
                                       Row(
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.symmetric(
+                                            padding:
+                                                const EdgeInsets.symmetric(
                                               horizontal: 10,
                                               vertical: 4,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: const Color(
-                                                0xff6D5DF6,
-                                              ).withOpacity(0.10),
+                                              color: const Color(0xff6D5DF6)
+                                                  .withOpacity(0.10),
                                               borderRadius:
                                                   BorderRadius.circular(30),
                                             ),
@@ -782,33 +1156,8 @@ class _ProductScreenState extends State<ProductScreen> {
                                             ),
                                           ),
                                           const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: outOfStock
-                                                  ? Colors.red.withOpacity(0.10)
-                                                  : Colors.green.withOpacity(
-                                                      0.10,
-                                                    ),
-                                              borderRadius:
-                                                  BorderRadius.circular(30),
-                                            ),
-                                            child: Text(
-                                              outOfStock
-                                                  ? "Out of Stock"
-                                                  : "In Stock",
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: outOfStock
-                                                    ? Colors.red
-                                                    : Colors.green,
-                                              ),
-                                            ),
-                                          ),
+                                          // ✅ FIX 5: Low Stock badge
+                                          _stockBadge(stockQty, inStock),
                                         ],
                                       ),
                                       const SizedBox(height: 12),
@@ -819,7 +1168,8 @@ class _ProductScreenState extends State<ProductScreen> {
                                               title: "Selling",
                                               value:
                                                   "₹${selling.toStringAsFixed(0)}",
-                                              color: const Color(0xff2196F3),
+                                              color:
+                                                  const Color(0xff2196F3),
                                             ),
                                           ),
                                           const SizedBox(width: 8),
@@ -828,7 +1178,8 @@ class _ProductScreenState extends State<ProductScreen> {
                                               title: "Profit",
                                               value:
                                                   "₹${profit.toStringAsFixed(0)}",
-                                              color: const Color(0xff2E7D32),
+                                              color:
+                                                  const Color(0xff2E7D32),
                                             ),
                                           ),
                                           const SizedBox(width: 8),
@@ -836,7 +1187,8 @@ class _ProductScreenState extends State<ProductScreen> {
                                             child: _infoBox(
                                               title: "Stock",
                                               value: stockQty.toString(),
-                                              color: const Color(0xffF57C00),
+                                              color:
+                                                  const Color(0xffF57C00),
                                             ),
                                           ),
                                         ],
