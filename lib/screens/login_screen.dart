@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/api_config.dart';
 import '../models/user_role.dart';
 import 'forgot_password_screen.dart';
 import 'owner_dashboard.dart';
@@ -124,11 +124,7 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final baseUrl = dotenv.env['BASE_URL'] ?? '';
-    if (baseUrl.isEmpty) {
-      _showMessage('BASE_URL is missing in .env file', isError: true);
-      return;
-    }
+    final baseUrl = ApiConfig.baseUrl;
 
     setState(() => _isLoading = true);
 
@@ -148,7 +144,10 @@ class _LoginScreenState extends State<LoginScreen>
 
       if (response.statusCode != 200) {
         _showMessage(
-          data['message']?.toString() ?? 'Login failed',
+          response.statusCode == 429 &&
+                  data['code']?.toString() == 'LOGIN_TEMPORARILY_BLOCKED'
+              ? data['message']?.toString() ?? 'Login temporarily blocked'
+              : data['message']?.toString() ?? 'Login failed',
           isError: true,
         );
         return;

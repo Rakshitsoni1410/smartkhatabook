@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
+import 'services/api_client.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-  debugPrint('Environment variables loaded: ${dotenv.env['BASE_URL']}');
+  debugPrint('API base URL: ${dotenv.env['BASE_URL']}');
   runApp(const SmartKhataApp());
 }
 
@@ -16,6 +18,8 @@ class SmartKhataApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      navigatorKey: ApiClient.navigatorKey,
+      routes: {'/login': (_) => const LoginScreen()},
 
       theme: ThemeData(
         useMaterial3: true,

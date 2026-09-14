@@ -1,12 +1,21 @@
-import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 
+import '../models/order.dart';
+import '../services/api_client.dart';
 import '../services/ledger_service.dart';
 
-enum OrderStatus { pending, approved, onTheWay, delivered, rejected, cancelled }
+enum OrderStatus {
+  pending,
+  approved,
+  processing,
+  onTheWay,
+  delivered,
+  completed,
+  rejected,
+  cancelled,
+}
 
 class WholesalerOrderStatusScreen extends StatefulWidget {
   final Map<String, dynamic> order;
@@ -41,6 +50,7 @@ class _WholesalerOrderStatusScreenState
   late bool _advancePaid;
   late bool _finalPaymentRequested;
   late bool _fullPaymentDone;
+  late List<PaymentTransaction> _paymentHistory;
 
   @override
   void initState() {
@@ -52,18 +62,40 @@ class _WholesalerOrderStatusScreenState
     _advancePaid = widget.order["advancePaid"] == true;
     _finalPaymentRequested = widget.order["finalPaymentRequested"] == true;
     _fullPaymentDone = widget.order["fullPaymentDone"] == true;
+    _paymentHistory = widget.order["paymentHistory"] is List
+        ? (widget.order["paymentHistory"] as List)
+              .whereType<Map>()
+              .map(
+                (item) => PaymentTransaction.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList()
+        : [];
 
     _status = _parseStatus(_orderStatus);
+  }
+
+  @override
+  void dispose() {
+    _advanceController.dispose();
+    super.dispose();
   }
 
   OrderStatus _parseStatus(String value) {
     switch (value.toLowerCase()) {
       case "approved":
         return OrderStatus.approved;
+      case "processing":
+        return OrderStatus.processing;
       case "ontheway":
+      case "on_the_way":
+      case "on-the-way":
         return OrderStatus.onTheWay;
       case "delivered":
         return OrderStatus.delivered;
+      case "completed":
+        return OrderStatus.completed;
       case "rejected":
         return OrderStatus.rejected;
       case "cancelled":
@@ -80,10 +112,14 @@ class _WholesalerOrderStatusScreenState
         return "pending";
       case OrderStatus.approved:
         return "approved";
+      case OrderStatus.processing:
+        return "processing";
       case OrderStatus.onTheWay:
         return "onTheWay";
       case OrderStatus.delivered:
         return "delivered";
+      case OrderStatus.completed:
+        return "completed";
       case OrderStatus.rejected:
         return "rejected";
       case OrderStatus.cancelled:
@@ -97,10 +133,14 @@ class _WholesalerOrderStatusScreenState
         return Colors.deepPurple;
       case OrderStatus.approved:
         return Colors.blue;
+      case OrderStatus.processing:
+        return Colors.purple;
       case OrderStatus.onTheWay:
         return Colors.orange;
       case OrderStatus.delivered:
         return Colors.green;
+      case OrderStatus.completed:
+        return Colors.teal;
       case OrderStatus.rejected:
         return Colors.red;
       case OrderStatus.cancelled:
@@ -114,10 +154,14 @@ class _WholesalerOrderStatusScreenState
         return "Pending";
       case OrderStatus.approved:
         return "Approved";
+      case OrderStatus.processing:
+        return "Processing";
       case OrderStatus.onTheWay:
         return "On The Way";
       case OrderStatus.delivered:
         return "Delivered";
+      case OrderStatus.completed:
+        return "Completed";
       case OrderStatus.rejected:
         return "Rejected";
       case OrderStatus.cancelled:
@@ -184,20 +228,10 @@ class _WholesalerOrderStatusScreenState
     setState(() => _isSaving = true);
 
     try {
-      final base = dotenv.env['BASE_URL'] ?? '';
-      if (base.isEmpty) throw Exception("BASE_URL is missing in .env");
-
-      final response = await http
-          .patch(
-            Uri.parse('$base/orders/$orderId/status'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({"status": _statusApiValue(_status)}),
-          )
-          .timeout(const Duration(seconds: 20));
-
-      if (response.statusCode != 200) {
-        throw Exception("Server error: ${response.statusCode}");
-      }
+      await ApiClient.patch(
+        '/orders/$orderId/status',
+        body: {"status": _statusApiValue(_status)},
+      );
 
       // ✅ FIX: Update local _orderStatus so "Request Final Payment" card shows correctly
       setState(() {
@@ -245,16 +279,14 @@ class _WholesalerOrderStatusScreenState
     setState(() => _isRequestingAdvance = true);
 
     try {
-      final base = dotenv.env['BASE_URL'] ?? '';
       final orderId = widget.order["_id"];
 
-      final response = await http.patch(
-        Uri.parse('$base/orders/$orderId/request-advance'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({"advancePercentage": percentage}),
+      await ApiClient.patch(
+        '/orders/$orderId/request-advance',
+        body: {"advancePercentage": percentage},
       );
 
-      if (response.statusCode == 200) {
+      {
         // ✅ FIX: Update local state so card switches immediately
         setState(() {
           _advanceRequested = true;
@@ -270,8 +302,6 @@ class _WholesalerOrderStatusScreenState
         if (!mounted) return;
         _showSnack("Advance request sent (${percentage.toStringAsFixed(0)}%)");
         Navigator.pop(context, true);
-      } else {
-        throw Exception("Server error: ${response.statusCode}");
       }
     } catch (e) {
       _showSnack("Error: $e");
@@ -284,26 +314,20 @@ class _WholesalerOrderStatusScreenState
     setState(() => _isPayingAdvance = true);
 
     try {
-      final base = dotenv.env['BASE_URL'] ?? '';
       final orderId = widget.order["_id"];
-
-      final response = await http.patch(
-        Uri.parse('$base/orders/$orderId/pay-advance'),
-      );
-
-      if (response.statusCode == 200) {
-        if (!mounted) return;
-        // ✅ FIX: Update local state variables, not widget.order map
-        setState(() {
-          _paymentStatus = "advancePaid";
-          _advancePaid = true;
-          widget.order["paymentStatus"] = "advancePaid";
-          widget.order["advancePaid"] = true;
-        });
-        _showSnack("Advance paid successfully");
-      } else {
-        throw Exception("Server error: ${response.statusCode}");
-      }
+      final amount = _getAdvanceAmount();
+      final payment = await _showDemoPayment(amount, 'advance');
+      if (payment == null) return;
+      await ApiClient.patch('/orders/$orderId/pay-advance', body: payment);
+      if (!mounted) return;
+      setState(() {
+        _paymentStatus = "advancePaid";
+        _advancePaid = true;
+        widget.order["paymentStatus"] = "advancePaid";
+        widget.order["advancePaid"] = true;
+        _paymentHistory.add(_transaction(payment, 'advance', amount));
+      });
+      _showSnack("Advance paid successfully");
     } catch (e) {
       _showSnack("Error: $e");
     } finally {
@@ -315,14 +339,9 @@ class _WholesalerOrderStatusScreenState
     setState(() => _isRequestingFinal = true);
 
     try {
-      final base = dotenv.env['BASE_URL'] ?? '';
       final orderId = widget.order["_id"];
-
-      final response = await http.patch(
-        Uri.parse('$base/orders/$orderId/request-final-payment'),
-      );
-
-      if (response.statusCode == 200) {
+      await ApiClient.patch('/orders/$orderId/request-final-payment');
+      {
         if (!mounted) return;
         // ✅ FIX: Update local _finalPaymentRequested so card hides
         setState(() {
@@ -330,8 +349,6 @@ class _WholesalerOrderStatusScreenState
         });
         _showSnack("Final payment requested");
         Navigator.pop(context, true);
-      } else {
-        throw Exception("Server error: ${response.statusCode}");
       }
     } catch (e) {
       _showSnack("Error: $e");
@@ -344,26 +361,20 @@ class _WholesalerOrderStatusScreenState
     setState(() => _isCompletingPayment = true);
 
     try {
-      final base = dotenv.env['BASE_URL'] ?? '';
       final orderId = widget.order["_id"];
-
-      final response = await http.patch(
-        Uri.parse('$base/orders/$orderId/complete-payment'),
-      );
-
-      if (response.statusCode == 200) {
-        if (!mounted) return;
-        // ✅ FIX: Update local state
-        setState(() {
-          _paymentStatus = "paid";
-          _fullPaymentDone = true;
-          widget.order["paymentStatus"] = "paid";
-          widget.order["fullPaymentDone"] = true;
-        });
-        _showSnack("Payment completed successfully");
-      } else {
-        throw Exception("Server error: ${response.statusCode}");
-      }
+      final amount = _getRemainingAmount();
+      final payment = await _showDemoPayment(amount, 'final');
+      if (payment == null) return;
+      await ApiClient.patch('/orders/$orderId/complete-payment', body: payment);
+      if (!mounted) return;
+      setState(() {
+        _paymentStatus = "paid";
+        _fullPaymentDone = true;
+        widget.order["paymentStatus"] = "paid";
+        widget.order["fullPaymentDone"] = true;
+        _paymentHistory.add(_transaction(payment, 'final', amount));
+      });
+      _showSnack("Payment completed successfully");
     } catch (e) {
       _showSnack("Error: $e");
     } finally {
@@ -376,9 +387,107 @@ class _WholesalerOrderStatusScreenState
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  PaymentTransaction _transaction(
+    Map<String, dynamic> payment,
+    String type,
+    double amount,
+  ) => PaymentTransaction(
+    transactionId: payment['transactionId'].toString(),
+    paymentType: type,
+    paymentMethod: payment['paymentMethod'].toString(),
+    amount: amount,
+    status: 'success',
+    isMockPayment: true,
+    paidAt: DateTime.now(),
+  );
+
+  Future<Map<String, dynamic>?> _showDemoPayment(
+    double amount,
+    String type,
+  ) async {
+    String method = 'upi';
+    return showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              MediaQuery.of(context).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Smart Khata Pay',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const Text(
+                  'Demo Payment Gateway  •  TEST MODE',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'No real money will be transferred. Do not enter real banking credentials.',
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Pay ₹${amount.toStringAsFixed(2)} (${type == 'advance' ? 'Advance' : 'Remaining Amount'})',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                RadioListTile(
+                  value: 'upi',
+                  groupValue: method,
+                  title: const Text('UPI'),
+                  onChanged: (value) => setModalState(() => method = value!),
+                ),
+                RadioListTile(
+                  value: 'card',
+                  groupValue: method,
+                  title: const Text('Card'),
+                  onChanged: (value) => setModalState(() => method = value!),
+                ),
+                RadioListTile(
+                  value: 'netbanking',
+                  groupValue: method,
+                  title: const Text('Net Banking'),
+                  onChanged: (value) => setModalState(() => method = value!),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      final suffix =
+                          '${DateTime.now().millisecondsSinceEpoch}${Random().nextInt(999)}';
+                      Navigator.pop(context, {
+                        'mockPayment': true,
+                        'transactionId':
+                            'SKPAY-${suffix.substring(0, 9)}-XYZ${suffix.substring(suffix.length - 2)}',
+                        'paymentMethod': method,
+                        'amount': amount,
+                      });
+                    },
+                    child: const Text('Confirm Demo Payment'),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   List<OrderStatus> _allowedStatuses() {
     final role = widget.userRole.trim().toLowerCase();
-    if (role == "wholesaler") {
+    if (role == "wholesaler" || role == "owner") {
       return [
         OrderStatus.pending,
         OrderStatus.approved,
@@ -401,7 +510,7 @@ class _WholesalerOrderStatusScreenState
     final pricePerUnit = _getPricePerUnit();
     final orderAmount = _getTotalAmount();
     final role = widget.userRole.trim().toLowerCase();
-    final canEditStatus = role == "wholesaler";
+    final canEditStatus = role == "wholesaler" || role == "owner";
 
     // ✅ FIX: Use local state variables for all conditions
     final isAdvancePaid = _paymentStatus.toLowerCase() == "advancepaid";
@@ -743,6 +852,45 @@ class _WholesalerOrderStatusScreenState
                 ),
               ),
 
+            if (_paymentHistory.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Payment History",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ..._paymentHistory.map(
+                        (payment) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            payment.paymentType.toLowerCase() == 'final'
+                                ? Icons.done_all
+                                : Icons.payments_outlined,
+                            color: Colors.green,
+                          ),
+                          title: Text(
+                            "${payment.paymentType.isEmpty ? 'Payment' : payment.paymentType[0].toUpperCase() + payment.paymentType.substring(1)}  ₹${payment.amount.toStringAsFixed(2)}",
+                          ),
+                          subtitle: Text(
+                            "${payment.paymentMethod.toUpperCase()}  •  ${payment.transactionId}\n${payment.paidAt == null ? '' : _formatDate(payment.paidAt!)}",
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
             const SizedBox(height: 24),
 
             // ─── BOTTOM BUTTON ────────────────────────────────────
@@ -812,5 +960,28 @@ class _WholesalerOrderStatusScreenState
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime value) {
+    final local = value.toLocal();
+    return '${local.day.toString().padLeft(2, '0')} ${_month(local.month)} ${local.year}, ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _month(int value) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return months[value - 1];
   }
 }

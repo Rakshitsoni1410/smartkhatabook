@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'chatbot_screen.dart';
 import '../models/user_role.dart';
 import 'dashboard_home_screen.dart';
 import 'employee_screen.dart';
@@ -7,6 +7,7 @@ import 'ledger_summary_screen.dart';
 import 'product_screen.dart';
 import 'review_screen.dart';
 import 'wholesaler_order_list_screen.dart';
+import 'billing_screen.dart';
 
 class OwnerDashboard extends StatefulWidget {
   final String userId;
@@ -96,7 +97,17 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             ),
           ),
           _DashboardTabConfig(
-            page: const LedgerSummaryScreen(userId: '',),
+            page: BillingScreen(
+              userId: widget.userId,
+              userRole: widget.userRole.label,
+            ),
+            item: const BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long_outlined),
+              label: 'Billing',
+            ),
+          ),
+          _DashboardTabConfig(
+            page: const LedgerSummaryScreen(userId: ''),
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.book_outlined),
               label: 'Ledger',
@@ -152,6 +163,16 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             ),
           ),
           _DashboardTabConfig(
+            page: BillingScreen(
+              userId: widget.userId,
+              userRole: widget.userRole.label,
+            ),
+            item: const BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long_outlined),
+              label: 'Billing',
+            ),
+          ),
+          _DashboardTabConfig(
             page: reviews,
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.reviews_outlined),
@@ -170,7 +191,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             ),
           ),
           _DashboardTabConfig(
-            page: const LedgerSummaryScreen(userId: '',),
+            page: const LedgerSummaryScreen(userId: ''),
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.book_outlined),
               label: 'Ledger',
@@ -226,7 +247,17 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
             ),
           ),
           _DashboardTabConfig(
-            page: const LedgerSummaryScreen(userId: '',),
+            page: BillingScreen(
+              userId: widget.userId,
+              userRole: widget.userRole.label,
+            ),
+            item: const BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long_outlined),
+              label: 'Billing',
+            ),
+          ),
+          _DashboardTabConfig(
+            page: const LedgerSummaryScreen(userId: ''),
             item: const BottomNavigationBarItem(
               icon: Icon(Icons.book_outlined),
               label: 'Ledger',
@@ -261,6 +292,23 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
         selectedItemColor: const Color(0xff2563EB),
         unselectedItemColor: Colors.grey,
         items: _tabs.map((tab) => tab.item).toList(),
+      ),
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'chatbot_fab',
+        backgroundColor: const Color(0xff6D5DF6),
+        tooltip: 'Smart Assistant',
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatbotScreen(
+                userId: widget.userId,
+                businessType: widget.businessType,
+              ),
+            ),
+          );
+        },
+        child: const Text('💬', style: TextStyle(fontSize: 22)),
       ),
     );
   }

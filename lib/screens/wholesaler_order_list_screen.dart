@@ -1,9 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 
+import '../services/api_client.dart';
 import 'wholesaler_order_status_screen.dart';
 
 enum OrderStatus {
@@ -50,30 +47,26 @@ class _WholesalerOrderListScreenState extends State<WholesalerOrderListScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final base = dotenv.env['BASE_URL'] ?? '';
-      if (base.isEmpty) {
-        throw Exception("BASE_URL is missing in .env");
-      }
-
       final normalizedRole = widget.userRole.trim().toLowerCase();
+      final path = (normalizedRole == "wholesaler" || normalizedRole == "owner")
+          ? '/orders/wholesaler/${widget.userId}'
+          : '/orders/retailer/${widget.userId}';
+      final response = await ApiClient.get(path);
+      final data = response['data'] ?? response['orders'] ?? [];
 
-      final uri = normalizedRole == "wholesaler"
-          ? Uri.parse('$base/orders/wholesaler/${widget.userId}')
-          : Uri.parse('$base/orders/retailer/${widget.userId}');
-
-      final resp = await http.get(uri).timeout(const Duration(seconds: 20));
-      final data = jsonDecode(resp.body);
-
-      if (resp.statusCode == 200) {
-        if (data is List) {
-          orders = List<Map<String, dynamic>>.from(data);
-        } else if (data is Map && data["orders"] is List) {
-          orders = List<Map<String, dynamic>>.from(data["orders"]);
-        } else {
-          orders = [];
-        }
+      if (data is List) {
+        orders = data
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
       } else {
-        throw Exception("Failed to load orders");
+        orders = [];
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Orders error: ${error.message}")),
+        );
       }
     } catch (e) {
       if (mounted) {
