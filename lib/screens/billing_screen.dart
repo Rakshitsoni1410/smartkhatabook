@@ -15,15 +15,15 @@
 // Payment gateway is DEMO only — mock UPI / Card / NetBanking.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 import '../config/api_config.dart';
+import '../services/api_client.dart';
+import 'invoice_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENTRY POINT
@@ -46,6 +46,7 @@ class BillingScreen extends StatefulWidget {
 class _BillingScreenState extends State<BillingScreen> {
   // ── state ──────────────────────────────────────────────────────────────────
   List<Map<String, dynamic>> _bills = [];
+  final Set<String> _busyOrderIds = {};
   bool _loading = true;
   String? _error;
   String _filter = 'all'; // all | unpaid | paid
@@ -63,11 +64,6 @@ class _BillingScreenState extends State<BillingScreen> {
   }
 
   // ── fetch ──────────────────────────────────────────────────────────────────
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
-  }
-
   Future<void> _fetchBills() async {
     setState(() {
       _loading = true;
@@ -75,43 +71,41 @@ class _BillingScreenState extends State<BillingScreen> {
     });
 
     try {
-      final token = await _getToken();
       final url = _isWholesalerSide
           ? ApiConfig.billingWholesaler(widget.userId)
           : ApiConfig.billingRetailer(widget.userId);
-
-      final res = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'token': token,
-        },
-      );
-
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-
-      if (res.statusCode == 200 && data['success'] == true) {
-        final raw = data['bills'];
-        setState(() {
-          _bills = raw is List
-              ? raw.map((e) => e as Map<String, dynamic>).toList()
-              : [];
-          _loading = false;
-        });
-      } else if (res.statusCode == 401) {
-        setState(() {
-          _error = 'SESSION_EXPIRED';
-          _loading = false;
-        });
-      } else {
-        setState(() {
-          _error = data['message'] as String? ?? 'Failed to load bills';
-          _loading = false;
-        });
+      final data = await ApiClient.get(url);
+      if (data['success'] != true) {
+        throw ApiException(
+          data['message']?.toString() ?? 'Failed to load bills',
+        );
       }
-    } catch (e) {
+      final raw = data['bills'];
+      final fetchedBills = raw is List
+          ? raw
+                .whereType<Map>()
+                .map((bill) => Map<String, dynamic>.from(bill))
+                .where(
+                  (bill) =>
+                      _isWholesalerSide || bill['billSentToRetailer'] == true,
+                )
+                .toList()
+          : <Map<String, dynamic>>[];
+      if (!mounted) return;
       setState(() {
-        _error = 'Network error. Check your connection.';
+        _bills = fetchedBills;
+        _loading = false;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.message;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Unable to load bills from the local backend: $error';
         _loading = false;
       });
     }
@@ -121,14 +115,10 @@ class _BillingScreenState extends State<BillingScreen> {
   List<Map<String, dynamic>> get _filtered {
     if (_filter == 'all') return _bills;
     if (_filter == 'paid') {
-      return _bills
-          .where((b) => b['paymentStatus'] == 'paid')
-          .toList();
+      return _bills.where((b) => b['paymentStatus'] == 'paid').toList();
     }
     // unpaid = anything that isn't "paid"
-    return _bills
-        .where((b) => b['paymentStatus'] != 'paid')
-        .toList();
+    return _bills.where((b) => b['paymentStatus'] != 'paid').toList();
   }
 
   double _toDouble(dynamic value) {
@@ -138,106 +128,140 @@ class _BillingScreenState extends State<BillingScreen> {
 
   // ── actions ────────────────────────────────────────────────────────────────
 
-  // Wholesaler: send bill to retailer
-  Future<void> _sendBill(String orderId) async {
-    final token = await _getToken();
+  Future<void> _sendBill(Map<String, dynamic> bill) async {
+    final orderId = bill['_id']?.toString() ?? bill['id']?.toString() ?? '';
+    if (orderId.isEmpty || _busyOrderIds.contains(orderId)) return;
+    final invoiceNumber = bill['invoiceNumber']?.toString();
+    final productName = bill['productName']?.toString() ?? 'Product';
+    final amount = _toDouble(bill['totalAmount']);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Send this bill to retailer?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Invoice: ${invoiceNumber?.isNotEmpty == true ? invoiceNumber : 'Assigned when sent'}',
+            ),
+            Text('Product: $productName'),
+            Text('Amount: ₹${amount.toStringAsFixed(2)}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Confirm & Send'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || _busyOrderIds.contains(orderId)) {
+      return;
+    }
+
+    setState(() => _busyOrderIds.add(orderId));
     try {
-      final res = await http.patch(
-        Uri.parse(ApiConfig.sendBill(orderId)),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'token': token,
-        },
-      );
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final data = await ApiClient.patch(ApiConfig.sendBill(orderId));
       if (!mounted) return;
-      if (res.statusCode == 200 && data['success'] == true) {
-        _showSnack('Bill sent to retailer ✅', Colors.green);
-        _fetchBills();
-      } else {
-        _showSnack(data['message'] as String? ?? 'Failed to send bill',
-            Colors.red);
+      if (data['success'] != true) {
+        throw ApiException(
+          data['message']?.toString() ?? 'Failed to send bill',
+        );
       }
-    } catch (_) {
-      _showSnack('Network error', Colors.red);
+      _showSnack('Bill sent to retailer', Colors.green);
+      await _fetchBills();
+    } on ApiException catch (error) {
+      if (mounted) _showSnack(error.message, Colors.red);
+    } catch (error) {
+      if (mounted) _showSnack('Unable to send bill: $error', Colors.red);
+    } finally {
+      if (mounted) setState(() => _busyOrderIds.remove(orderId));
     }
   }
 
   // Wholesaler: request advance payment
   Future<void> _requestAdvance(String orderId, double totalAmount) async {
     final pct = await _showPercentageDialog(totalAmount);
-    if (pct == null) return;
+    if (pct == null) {
+      return;
+    }
 
-    final token = await _getToken();
     try {
-      final res = await http.patch(
-        Uri.parse(ApiConfig.requestAdvance(orderId)),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'token': token,
-        },
-        body: jsonEncode({'advancePercentage': pct}),
+      final data = await ApiClient.patch(
+        ApiConfig.requestAdvance(orderId),
+        body: {'advancePercentage': pct},
       );
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
       if (!mounted) return;
-      if (res.statusCode == 200 && data['success'] == true) {
-        _showSnack('Advance payment requested ✅', Colors.green);
-        _fetchBills();
-      } else {
-        _showSnack(data['message'] as String? ?? 'Request failed', Colors.red);
+      if (data['success'] != true) {
+        throw ApiException(data['message']?.toString() ?? 'Request failed');
       }
-    } catch (_) {
-      _showSnack('Network error', Colors.red);
+      _showSnack('Advance payment requested', Colors.green);
+      await _fetchBills();
+    } on ApiException catch (error) {
+      if (mounted) _showSnack(error.message, Colors.red);
+    } catch (error) {
+      if (mounted) {
+        _showSnack('Unable to request advance payment: $error', Colors.red);
+      }
     }
   }
 
   // Wholesaler: request final payment
   Future<void> _requestFinalPayment(String orderId) async {
-    final token = await _getToken();
     try {
-      final res = await http.patch(
-        Uri.parse(ApiConfig.requestFinalPayment(orderId)),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'token': token,
-        },
+      final data = await ApiClient.patch(
+        ApiConfig.requestFinalPayment(orderId),
       );
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
       if (!mounted) return;
-      if (res.statusCode == 200 && data['success'] == true) {
-        _showSnack('Final payment requested ✅', Colors.green);
-        _fetchBills();
-      } else {
-        _showSnack(data['message'] as String? ?? 'Request failed', Colors.red);
+      if (data['success'] != true) {
+        throw ApiException(data['message']?.toString() ?? 'Request failed');
       }
-    } catch (_) {
-      _showSnack('Network error', Colors.red);
+      _showSnack('Final payment requested', Colors.green);
+      await _fetchBills();
+    } on ApiException catch (error) {
+      if (mounted) _showSnack(error.message, Colors.red);
+    } catch (error) {
+      if (mounted) {
+        _showSnack('Unable to request final payment: $error', Colors.red);
+      }
     }
   }
 
   // Retailer: pay advance
   Future<void> _payAdvance(Map<String, dynamic> bill) async {
     final amount = _toDouble(bill['advanceAmount']);
-    final orderId = bill['_id'] as String;
+    final orderId = bill['_id']?.toString() ?? bill['id']?.toString() ?? '';
+    if (orderId.isEmpty) {
+      _showSnack('This bill has no valid order ID', Colors.red);
+      return;
+    }
 
     await _openDemoPaymentSheet(
       orderId: orderId,
       amount: amount,
       paymentType: 'advance',
-      label: 'Pay Advance',
     );
   }
 
   // Retailer: complete final payment
   Future<void> _payFinal(Map<String, dynamic> bill) async {
     final amount = _toDouble(bill['remainingAmount']);
-    final orderId = bill['_id'] as String;
+    final orderId = bill['_id']?.toString() ?? bill['id']?.toString() ?? '';
+    if (orderId.isEmpty) {
+      _showSnack('This bill has no valid order ID', Colors.red);
+      return;
+    }
 
     await _openDemoPaymentSheet(
       orderId: orderId,
       amount: amount,
       paymentType: 'final',
-      label: 'Pay Final Amount',
     );
   }
 
@@ -246,7 +270,6 @@ class _BillingScreenState extends State<BillingScreen> {
     required String orderId,
     required double amount,
     required String paymentType, // "advance" | "final"
-    required String label,
   }) async {
     await showModalBottomSheet(
       context: context,
@@ -256,11 +279,9 @@ class _BillingScreenState extends State<BillingScreen> {
         orderId: orderId,
         amount: amount,
         paymentType: paymentType,
-        label: label,
-        getToken: _getToken,
-        onSuccess: () {
+        onSuccess: () async {
           _showSnack('Payment successful ✅', Colors.green);
-          _fetchBills();
+          await _fetchBills();
         },
         onError: (msg) => _showSnack(msg, Colors.red),
       ),
@@ -274,10 +295,13 @@ class _BillingScreenState extends State<BillingScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlg) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: const Text('Request Advance %',
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: const Text(
+            'Request Advance %',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -295,7 +319,8 @@ class _BillingScreenState extends State<BillingScreen> {
                     selected: isSelected,
                     selectedColor: const Color(0xff6D5DF6),
                     labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black87),
+                      color: isSelected ? Colors.white : Colors.black87,
+                    ),
                     onSelected: (_) => setDlg(() => selected = pct),
                   );
                 }).toList(),
@@ -304,19 +329,22 @@ class _BillingScreenState extends State<BillingScreen> {
               Text(
                 'Advance: ₹${(totalAmount * selected / 100).toStringAsFixed(2)}',
                 style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xff6D5DF6)),
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xff6D5DF6),
+                ),
               ),
             ],
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xff6D5DF6),
-                  foregroundColor: Colors.white),
+                backgroundColor: const Color(0xff6D5DF6),
+                foregroundColor: Colors.white,
+              ),
               onPressed: () => Navigator.pop(ctx, selected),
               child: const Text('Request'),
             ),
@@ -329,9 +357,9 @@ class _BillingScreenState extends State<BillingScreen> {
   // ── snackbar ───────────────────────────────────────────────────────────────
   void _showSnack(String msg, Color color) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(backgroundColor: color, content: Text(msg)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(backgroundColor: color, content: Text(msg)));
   }
 
   // ── build ──────────────────────────────────────────────────────────────────
@@ -359,13 +387,13 @@ class _BillingScreenState extends State<BillingScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _buildError()
-              : Column(
-                  children: [
-                    _buildFilterBar(),
-                    Expanded(child: _buildList()),
-                  ],
-                ),
+          ? _buildError()
+          : Column(
+              children: [
+                _buildFilterBar(),
+                Expanded(child: _buildList()),
+              ],
+            ),
     );
   }
 
@@ -392,8 +420,9 @@ class _BillingScreenState extends State<BillingScreen> {
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xff6D5DF6),
-                  foregroundColor: Colors.white),
+                backgroundColor: const Color(0xff6D5DF6),
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -415,8 +444,10 @@ class _BillingScreenState extends State<BillingScreen> {
               onTap: () => setState(() => _filter = f),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: active
                       ? const Color(0xff6D5DF6)
@@ -447,13 +478,15 @@ class _BillingScreenState extends State<BillingScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.receipt_long_outlined,
-                size: 64, color: Colors.grey.shade300),
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 64,
+              color: Colors.grey.shade300,
+            ),
             const SizedBox(height: 16),
             Text(
               _filter == 'all' ? 'No bills yet' : 'No $_filter bills',
-              style:
-                  const TextStyle(fontSize: 16, color: Colors.black45),
+              style: const TextStyle(fontSize: 16, color: Colors.black45),
             ),
           ],
         ),
@@ -469,6 +502,7 @@ class _BillingScreenState extends State<BillingScreen> {
           bill: bills[i],
           isWholesalerSide: _isWholesalerSide,
           onSendBill: _sendBill,
+          onViewInvoice: _viewInvoice,
           onRequestAdvance: _requestAdvance,
           onRequestFinalPayment: _requestFinalPayment,
           onPayAdvance: _payAdvance,
@@ -476,6 +510,12 @@ class _BillingScreenState extends State<BillingScreen> {
         ),
       ),
     );
+  }
+
+  void _viewInvoice(Map<String, dynamic> bill) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => InvoiceScreen(bill: bill)));
   }
 }
 
@@ -486,9 +526,10 @@ class _BillingScreenState extends State<BillingScreen> {
 class _BillCard extends StatelessWidget {
   final Map<String, dynamic> bill;
   final bool isWholesalerSide;
-  final Future<void> Function(String orderId) onSendBill;
+  final Future<void> Function(Map<String, dynamic> bill) onSendBill;
+  final void Function(Map<String, dynamic> bill) onViewInvoice;
   final Future<void> Function(String orderId, double totalAmount)
-      onRequestAdvance;
+  onRequestAdvance;
   final Future<void> Function(String orderId) onRequestFinalPayment;
   final Future<void> Function(Map<String, dynamic> bill) onPayAdvance;
   final Future<void> Function(Map<String, dynamic> bill) onPayFinal;
@@ -497,6 +538,7 @@ class _BillCard extends StatelessWidget {
     required this.bill,
     required this.isWholesalerSide,
     required this.onSendBill,
+    required this.onViewInvoice,
     required this.onRequestAdvance,
     required this.onRequestFinalPayment,
     required this.onPayAdvance,
@@ -517,19 +559,8 @@ class _BillCard extends StatelessWidget {
 
   String _fmt(double v) => '₹${v.toStringAsFixed(2)}';
 
-  Color _statusColor(String s) {
-    switch (s) {
-      case 'paid':
-        return Colors.green;
-      case 'advancePaid':
-      case 'partial':
-        return Colors.orange;
-      case 'advanceRequested':
-        return Colors.blue;
-      default:
-        return Colors.red;
-    }
-  }
+  Map<String, dynamic>? _asMap(dynamic value) =>
+      value is Map ? Map<String, dynamic>.from(value) : null;
 
   String _statusLabel(String s) {
     switch (s) {
@@ -592,44 +623,59 @@ class _BillCard extends StatelessWidget {
     final fullPaid = _bool(bill['fullPaymentDone']);
 
     // counterparty info
-    final party = isWholesalerSide
-        ? bill['retailerId'] as Map<String, dynamic>?
-        : bill['wholesalerId'] as Map<String, dynamic>?;
+    final party = _asMap(
+      isWholesalerSide ? bill['retailerId'] : bill['wholesalerId'],
+    );
     final partyName = _str(party?['shopName'] ?? party?['name'], 'Unknown');
 
     final quantity = bill['quantity'];
     final unit = _str(bill['unit'], 'pcs');
+    final pricePerUnit = _num(bill['pricePerUnit']);
+    final orderDate = DateTime.tryParse(
+      (bill['createdAt'] ?? bill['billSentAt'] ?? '').toString(),
+    );
 
     // Payment history
     final history = bill['paymentHistory'];
     final payments = history is List
-        ? history.map((e) => e as Map<String, dynamic>).toList()
+        ? history
+              .whereType<Map>()
+              .map((payment) => Map<String, dynamic>.from(payment))
+              .toList()
         : <Map<String, dynamic>>[];
 
     // ── what actions are available ─────────────────────────────────────────
-    final canSendBill = isWholesalerSide &&
+    final canSendBill =
+        isWholesalerSide &&
         !billSent &&
         (orderStatus == 'delivered' || orderStatus == 'completed');
 
-    final canRequestAdvance = isWholesalerSide &&
+    final canRequestAdvance =
+        isWholesalerSide &&
         !advanceRequested &&
         !fullPaid &&
         orderStatus != 'rejected';
 
-    final canRequestFinal = isWholesalerSide &&
+    final canRequestFinal =
+        isWholesalerSide &&
         !finalRequested &&
         !fullPaid &&
         orderStatus == 'delivered';
 
-    final canPayAdvance = !isWholesalerSide &&
+    final canPayAdvance =
+        !isWholesalerSide &&
         advanceRequested &&
         !advancePaid &&
         advanceAmount > 0;
 
-    final canPayFinal = !isWholesalerSide &&
-        finalRequested &&
-        !fullPaid &&
-        remainingAmount > 0;
+    final canPayFinal =
+        !isWholesalerSide && finalRequested && !fullPaid && remainingAmount > 0;
+    final isDelivered =
+        orderStatus == 'delivered' || orderStatus == 'completed';
+    final canViewInvoice =
+        isDelivered &&
+        invoiceNumber.isNotEmpty &&
+        (isWholesalerSide || billSent);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -638,9 +684,10 @@ class _BillCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4)),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -651,7 +698,8 @@ class _BillCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                  colors: [Color(0xff6D5DF6), Color(0xff8E7CFF)]),
+                colors: [Color(0xff6D5DF6), Color(0xff8E7CFF)],
+              ),
               borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
             ),
             child: Row(
@@ -660,20 +708,31 @@ class _BillCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(productName,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        productName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text('$quantity $unit • $partyName',
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 12)),
-                      if (invoiceNumber.isNotEmpty) ...[
+                      Text(
+                        '$quantity $unit • $partyName',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (invoiceNumber.isNotEmpty && isDelivered) ...[
                         const SizedBox(height: 4),
-                        Text('INV: $invoiceNumber',
-                            style: const TextStyle(
-                                color: Colors.white60, fontSize: 11)),
+                        Text(
+                          'INV: $invoiceNumber',
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            fontSize: 11,
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -683,7 +742,9 @@ class _BillCard extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -691,26 +752,31 @@ class _BillCard extends StatelessWidget {
                       child: Text(
                         _statusLabel(paymentStatus),
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700),
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: _orderStatusColor(orderStatus)
-                            .withValues(alpha: 0.25),
+                        color: _orderStatusColor(
+                          orderStatus,
+                        ).withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         orderStatus,
                         style: TextStyle(
-                            color: _orderStatusColor(orderStatus),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600),
+                          color: _orderStatusColor(orderStatus),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -725,24 +791,34 @@ class _BillCard extends StatelessWidget {
             child: Row(
               children: [
                 _AmountTile(
-                    label: 'Total',
-                    value: _fmt(totalAmount),
-                    color: Colors.black87),
+                  label: 'Total',
+                  value: _fmt(totalAmount),
+                  color: Colors.black87,
+                ),
                 if (advancePct > 0) ...[
                   const SizedBox(width: 10),
                   _AmountTile(
-                      label: 'Advance (${advancePct.toInt()}%)',
-                      value: _fmt(advanceAmount),
-                      color: Colors.orange),
+                    label: 'Advance (${advancePct.toInt()}%)',
+                    value: _fmt(advanceAmount),
+                    color: Colors.orange,
+                  ),
                 ],
                 if (remainingAmount > 0) ...[
                   const SizedBox(width: 10),
                   _AmountTile(
-                      label: 'Remaining',
-                      value: _fmt(remainingAmount),
-                      color: Colors.red.shade600),
+                    label: 'Remaining',
+                    value: _fmt(remainingAmount),
+                    color: Colors.red.shade600,
+                  ),
                 ],
               ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text(
+              'Unit price: ${_fmt(pricePerUnit)}${orderDate == null ? '' : '  •  ${DateFormat('d MMM yyyy').format(orderDate.toLocal())}'}',
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ),
 
@@ -753,11 +829,14 @@ class _BillCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Payment History',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          color: Colors.black54)),
+                  const Text(
+                    'Payment History',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Colors.black54,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   ...payments.map((p) => _PaymentHistoryRow(payment: p)),
                 ],
@@ -772,12 +851,27 @@ class _BillCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
+                if (canViewInvoice)
+                  _ActionBtn(
+                    label: 'View Invoice',
+                    icon: Icons.receipt_long_outlined,
+                    color: Colors.blue,
+                    onTap: () => onViewInvoice(bill),
+                  ),
                 if (canSendBill)
                   _ActionBtn(
                     label: 'Send Bill',
                     icon: Icons.send_outlined,
                     color: const Color(0xff6D5DF6),
-                    onTap: () => onSendBill(orderId),
+                    onTap: () => onSendBill(bill),
+                  ),
+                if (isWholesalerSide && !isDelivered)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Available after delivery',
+                      style: TextStyle(color: Colors.black54, fontSize: 12),
+                    ),
                   ),
                 if (billSent && isWholesalerSide)
                   _ActionBtn(
@@ -846,8 +940,11 @@ class _AmountTile extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _AmountTile(
-      {required this.label, required this.value, required this.color});
+  const _AmountTile({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -861,17 +958,23 @@ class _AmountTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
-                style: TextStyle(
-                    fontSize: 10,
-                    color: color,
-                    fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 3),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: color)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
           ],
         ),
       ),
@@ -893,6 +996,10 @@ class _PaymentHistoryRow extends StatelessWidget {
         '₹${(amount is num ? amount.toDouble() : double.tryParse(amount?.toString() ?? '') ?? 0).toStringAsFixed(2)}';
     final txnId = payment['transactionId']?.toString() ?? '';
     final isMock = payment['isMockPayment'] == true;
+    final paidAt = DateTime.tryParse(payment['paidAt']?.toString() ?? '');
+    final paymentLabel = type.isEmpty
+        ? 'Payment'
+        : '${type[0].toUpperCase()}${type.substring(1)}';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -908,7 +1015,7 @@ class _PaymentHistoryRow extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '${type[0].toUpperCase()}${type.substring(1)} • $method • $amtStr${isMock ? ' (demo)' : ''}',
+              '$paymentLabel • $method • $amtStr${isMock ? ' (demo)' : ''}${paidAt == null ? '' : '\n${DateFormat('d MMM yyyy, h:mm a').format(paidAt.toLocal())}'}',
               style: const TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ),
@@ -916,16 +1023,16 @@ class _PaymentHistoryRow extends StatelessWidget {
             onTap: () {
               Clipboard.setData(ClipboardData(text: txnId));
               ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Transaction ID copied')));
+                const SnackBar(content: Text('Transaction ID copied')),
+              );
             },
             child: Text(
-              txnId.length > 12
-                  ? '${txnId.substring(0, 12)}…'
-                  : txnId,
+              txnId.length > 12 ? '${txnId.substring(0, 12)}…' : txnId,
               style: const TextStyle(
-                  fontSize: 11,
-                  color: Color(0xff6D5DF6),
-                  fontWeight: FontWeight.w600),
+                fontSize: 11,
+                color: Color(0xff6D5DF6),
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -940,11 +1047,12 @@ class _ActionBtn extends StatelessWidget {
   final Color color;
   final VoidCallback? onTap;
 
-  const _ActionBtn(
-      {required this.label,
-      required this.icon,
-      required this.color,
-      this.onTap});
+  const _ActionBtn({
+    required this.label,
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -954,11 +1062,12 @@ class _ActionBtn extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: disabled
-              ? Colors.grey.shade100
-              : color.withValues(alpha: 0.1),
+          color: disabled ? Colors.grey.shade100 : color.withValues(alpha: 0.1),
           border: Border.all(
-              color: disabled ? Colors.grey.shade300 : color.withValues(alpha: 0.4)),
+            color: disabled
+                ? Colors.grey.shade300
+                : color.withValues(alpha: 0.4),
+          ),
           borderRadius: BorderRadius.circular(22),
         ),
         child: Row(
@@ -969,9 +1078,10 @@ class _ActionBtn extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: disabled ? Colors.grey : color),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: disabled ? Colors.grey : color,
+              ),
             ),
           ],
         ),
@@ -990,17 +1100,13 @@ class _DemoPaymentSheet extends StatefulWidget {
   final String orderId;
   final double amount;
   final String paymentType; // "advance" | "final"
-  final String label;
-  final Future<String?> Function() getToken;
-  final VoidCallback onSuccess;
+  final Future<void> Function() onSuccess;
   final void Function(String msg) onError;
 
   const _DemoPaymentSheet({
     required this.orderId,
     required this.amount,
     required this.paymentType,
-    required this.label,
-    required this.getToken,
     required this.onSuccess,
     required this.onError,
   });
@@ -1017,57 +1123,57 @@ class _DemoPaymentSheetState extends State<_DemoPaymentSheet> {
   static String _generateTxnId() {
     final rnd = Random.secure();
     final chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    return 'TXN${List.generate(12, (_) => chars[rnd.nextInt(chars.length)]).join()}';
+    String block(int length) =>
+        List.generate(length, (_) => chars[rnd.nextInt(chars.length)]).join();
+    return 'SKPAY-${block(7)}-XYZ${block(2)}';
   }
 
   Future<void> _pay() async {
+    if (widget.amount <= 0) {
+      widget.onError('The payment amount must be greater than zero.');
+      return;
+    }
     setState(() => _processing = true);
 
-    // Simulate a small delay — feels real
     await Future.delayed(const Duration(milliseconds: 1200));
 
     final txnId = _generateTxnId();
-    final token = await widget.getToken();
-
-    final url = widget.paymentType == 'advance'
-        ? ApiConfig.payAdvance(widget.orderId)
-        : ApiConfig.completePayment(widget.orderId);
 
     try {
-      final res = await http.patch(
-        Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'token': token,
-        },
-        body: jsonEncode({
+      final data = await ApiClient.patch(
+        widget.paymentType == 'advance'
+            ? ApiConfig.payAdvance(widget.orderId)
+            : ApiConfig.completePayment(widget.orderId),
+        body: {
           'mockPayment': true,
           'transactionId': txnId,
           'paymentMethod': _method,
           'amount': widget.amount,
-        }),
+        },
       );
-
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-
-      if (res.statusCode == 200 && data['success'] == true) {
-        setState(() {
-          _processing = false;
-          _done = true;
-        });
-        await Future.delayed(const Duration(milliseconds: 800));
-        if (mounted) Navigator.pop(context);
-        widget.onSuccess();
-      } else {
-        setState(() => _processing = false);
-        if (mounted) Navigator.pop(context);
-        widget.onError(
-            data['message'] as String? ?? 'Payment failed');
+      if (data['success'] != true) {
+        throw ApiException(data['message']?.toString() ?? 'Payment failed');
       }
-    } catch (_) {
-      setState(() => _processing = false);
+      if (!mounted) return;
+      setState(() {
+        _processing = false;
+        _done = true;
+      });
+      await Future.delayed(const Duration(milliseconds: 800));
       if (mounted) Navigator.pop(context);
-      widget.onError('Network error. Try again.');
+      await widget.onSuccess();
+    } on ApiException catch (error) {
+      if (mounted) {
+        setState(() => _processing = false);
+        Navigator.pop(context);
+      }
+      widget.onError(error.message);
+    } catch (error) {
+      if (mounted) {
+        setState(() => _processing = false);
+        Navigator.pop(context);
+      }
+      widget.onError('Payment could not reach the local backend: $error');
     }
   }
 
@@ -1089,12 +1195,14 @@ class _DemoPaymentSheetState extends State<_DemoPaymentSheet> {
         children: [
           // handle bar
           Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2))),
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
 
           // title
           Row(
@@ -1102,23 +1210,40 @@ class _DemoPaymentSheetState extends State<_DemoPaymentSheet> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                    color: const Color(0xff6D5DF6).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.payment,
-                    color: Color(0xff6D5DF6), size: 22),
+                  color: const Color(0xff6D5DF6).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.payment,
+                  color: Color(0xff6D5DF6),
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.label,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 17)),
+                    const Text(
+                      'Smart Khata Pay',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
+                    ),
+                    const Text(
+                      'Demo Payment Gateway • TEST MODE',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     Text(
                       '⚠️ Demo payment — no real money charged',
                       style: TextStyle(
-                          fontSize: 11, color: Colors.orange.shade700),
+                        fontSize: 11,
+                        color: Colors.orange.shade700,
+                      ),
                     ),
                   ],
                 ),
@@ -1126,28 +1251,40 @@ class _DemoPaymentSheetState extends State<_DemoPaymentSheet> {
             ],
           ),
 
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'No real money will be transferred. Do not enter real banking credentials.',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ),
+          const SizedBox(height: 12),
+
           const SizedBox(height: 20),
 
           // amount chip
           Container(
-            padding:
-                const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                  colors: [Color(0xff6D5DF6), Color(0xff8E7CFF)]),
+                colors: [Color(0xff6D5DF6), Color(0xff8E7CFF)],
+              ),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Amount to Pay',
-                    style: TextStyle(color: Colors.white70, fontSize: 13)),
+                const Text(
+                  'Amount to Pay',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
                 Text(
                   '₹${widget.amount.toStringAsFixed(2)}',
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
                 ),
               ],
             ),
@@ -1157,10 +1294,15 @@ class _DemoPaymentSheetState extends State<_DemoPaymentSheet> {
 
           // method selector
           const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Payment Method',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.black54))),
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Payment Method',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black54,
+              ),
+            ),
+          ),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -1196,29 +1338,39 @@ class _DemoPaymentSheetState extends State<_DemoPaymentSheet> {
             child: ElevatedButton(
               onPressed: (_processing || _done) ? null : _pay,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _done
-                    ? Colors.green
-                    : const Color(0xff6D5DF6),
+                backgroundColor: _done ? Colors.green : const Color(0xff6D5DF6),
                 foregroundColor: Colors.white,
-                disabledBackgroundColor:
-                    _done ? Colors.green : Colors.grey.shade300,
+                disabledBackgroundColor: _done
+                    ? Colors.green
+                    : Colors.grey.shade300,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               child: _processing
                   ? const SizedBox(
                       height: 22,
                       width: 22,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2.5, color: Colors.white))
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
                   : _done
-                      ? const Text('✅ Payment Successful!',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16))
-                      : Text(
-                          'Pay Now  ₹${widget.amount.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
+                  ? const Text(
+                      '✅ Payment Successful!',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    )
+                  : Text(
+                      'Pay Now  ₹${widget.amount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -1233,11 +1385,12 @@ class _MethodTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _MethodTile(
-      {required this.label,
-      required this.icon,
-      required this.selected,
-      required this.onTap});
+  const _MethodTile({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1252,9 +1405,7 @@ class _MethodTile extends StatelessWidget {
                 ? const Color(0xff6D5DF6).withValues(alpha: 0.1)
                 : Colors.grey.shade50,
             border: Border.all(
-              color: selected
-                  ? const Color(0xff6D5DF6)
-                  : Colors.grey.shade200,
+              color: selected ? const Color(0xff6D5DF6) : Colors.grey.shade200,
               width: selected ? 2 : 1,
             ),
             borderRadius: BorderRadius.circular(12),
@@ -1268,9 +1419,7 @@ class _MethodTile extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: selected
-                      ? const Color(0xff6D5DF6)
-                      : Colors.black54,
+                  color: selected ? const Color(0xff6D5DF6) : Colors.black54,
                 ),
               ),
             ],

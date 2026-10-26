@@ -124,14 +124,14 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final baseUrl = ApiConfig.baseUrl;
+    final loginUrl = '${ApiConfig.apiBaseUrl}/user/login';
 
     setState(() => _isLoading = true);
 
     try {
       final response = await http
           .post(
-            Uri.parse('$baseUrl/user/login'),
+            Uri.parse(loginUrl),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'phone': _phoneController.text.trim(),

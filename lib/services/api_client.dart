@@ -45,10 +45,10 @@ class ApiClient {
     }
 
     try {
-      final request = http.Request(
-        method,
-        Uri.parse('${ApiConfig.baseUrl}$path'),
-      )..headers.addAll(headers);
+      final uri = Uri.parse(
+        path.startsWith('http') ? path : '${ApiConfig.apiBaseUrl}$path',
+      );
+      final request = http.Request(method, uri)..headers.addAll(headers);
       if (body != null) request.body = jsonEncode(body);
       final response = await http.Response.fromStream(
         await request.send().timeout(const Duration(seconds: 20)),
